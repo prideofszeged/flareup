@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PluginInfo, Preference } from '@flare/protocol';
+	import type { CompatibilityWarning, PluginInfo, Preference } from '@flare/protocol';
 	import { Input } from '$lib/components/ui/input';
 	import Icon from '$lib/components/Icon.svelte';
 	import { Checkbox } from './ui/checkbox';
@@ -28,6 +28,7 @@
 		type: 'extension' | 'command';
 		data: PluginInfo;
 		isLastInGroup: boolean;
+		compatibilityWarningCount: number;
 	};
 
 	let { plugins, onBack, onSavePreferences, onGetPreferences, currentPreferences }: Props =
@@ -85,12 +86,18 @@
 				continue;
 			}
 
+			const extensionWarningCount = commands.reduce(
+				(total, command) => total + (command.compatibilityWarnings?.length ?? 0),
+				0
+			);
+
 			items.push({
 				id: firstCommand.pluginName,
 				type: 'extension',
 				itemType: 'item',
 				data: firstCommand,
-				isLastInGroup: false
+				isLastInGroup: false,
+				compatibilityWarningCount: extensionWarningCount
 			});
 
 			const commandsToShow = extensionMatches ? commandsWithPrefs : matchingCommands;
@@ -100,7 +107,8 @@
 					type: 'command',
 					itemType: 'item',
 					data: command,
-					isLastInGroup: index === commandsToShow.length - 1
+					isLastInGroup: index === commandsToShow.length - 1,
+					compatibilityWarningCount: command.compatibilityWarnings?.length ?? 0
 				});
 			});
 		}
@@ -109,6 +117,15 @@
 	});
 
 	const selectedItem = $derived(displayItems[selectedIndex]);
+	const selectedWarnings = $derived.by(() => {
+		if (!selectedItem) return [] as CompatibilityWarning[];
+		if (selectedItem.type === 'extension') {
+			return plugins
+				.filter((plugin) => plugin.pluginName === selectedItem.data.pluginName)
+				.flatMap((plugin) => plugin.compatibilityWarnings ?? []);
+		}
+		return selectedItem.data.compatibilityWarnings ?? [];
+	});
 
 	const preferencesToShow = $derived.by(() => {
 		if (!selectedItem) return [];
@@ -216,6 +233,15 @@
 											{item.type === 'extension' ? 'Extension' : 'Command'}
 										</span>
 									</div>
+									{#if item.compatibilityWarningCount > 0}
+										<span
+											class="text-foreground/70 ml-auto flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium"
+											title="Potential compatibility issues"
+										>
+											<Icon icon="warning-16" class="text-amber-400" />
+											{item.compatibilityWarningCount}
+										</span>
+									{/if}
 								</button>
 							</div>
 						{/snippet}
@@ -242,6 +268,25 @@
 
 							<Button onclick={handleSave}>Save</Button>
 						</div>
+						{#if selectedWarnings.length > 0}
+							<div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+								<p class="text-amber-200 font-medium">
+									Potential compatibility issues detected
+								</p>
+								<ul class="mt-2 space-y-1 text-xs text-foreground">
+									{#each selectedWarnings.slice(0, 4) as warning}
+										<li>
+											<strong>{warning.commandTitle ?? warning.commandName}:</strong>
+											<span class="text-muted-foreground ml-1">{warning.reason}</span>
+										</li>
+									{/each}
+									{#if selectedWarnings.length > 4}
+										<li class="text-muted-foreground">... {selectedWarnings.length - 4} more warnings</li>
+									{/if}
+								</ul>
+							</div>
+						{/if}
+
 						{#if preferencesToShow.length > 0}
 							<div class="max-w-md space-y-6">
 								{#each preferencesToShow as pref (pref.name)}

@@ -26,6 +26,7 @@
 
 	type Violation = {
 		commandName: string;
+		commandTitle?: string;
 		reason: string;
 	};
 

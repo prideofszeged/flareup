@@ -7,11 +7,12 @@ use tauri::Manager;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
-#[derive(serde::Serialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HeuristicViolation {
-    command_name: String,
-    reason: String,
+    pub command_name: String,
+    pub command_title: String,
+    pub reason: String,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -22,15 +23,26 @@ pub enum InstallResult {
 }
 
 trait IncompatibilityHeuristic {
-    fn check(&self, command_title: &str, file_content: &str) -> Option<HeuristicViolation>;
+    fn check(
+        &self,
+        command_name: &str,
+        command_title: &str,
+        file_content: &str,
+    ) -> Option<HeuristicViolation>;
 }
 
 struct AppleScriptHeuristic;
 impl IncompatibilityHeuristic for AppleScriptHeuristic {
-    fn check(&self, command_title: &str, file_content: &str) -> Option<HeuristicViolation> {
+    fn check(
+        &self,
+        command_name: &str,
+        command_title: &str,
+        file_content: &str,
+    ) -> Option<HeuristicViolation> {
         if file_content.contains("runAppleScript") {
             Some(HeuristicViolation {
-                command_name: command_title.to_string(),
+                command_name: command_name.to_string(),
+                command_title: command_title.to_string(),
                 reason: "Possible usage of AppleScript (runAppleScript)".to_string(),
             })
         } else {
@@ -41,12 +53,18 @@ impl IncompatibilityHeuristic for AppleScriptHeuristic {
 
 struct MacOSPathHeuristic;
 impl IncompatibilityHeuristic for MacOSPathHeuristic {
-    fn check(&self, command_title: &str, file_content: &str) -> Option<HeuristicViolation> {
+    fn check(
+        &self,
+        command_name: &str,
+        command_title: &str,
+        file_content: &str,
+    ) -> Option<HeuristicViolation> {
         let macos_paths = ["/Applications/", "/Library/", "/Users/"];
         for path in macos_paths {
             if file_content.contains(path) {
                 return Some(HeuristicViolation {
-                    command_name: command_title.to_string(),
+                    command_name: command_name.to_string(),
+                    command_title: command_title.to_string(),
                     reason: format!("Potential hardcoded macOS path: '{}'", path),
                 });
             }
@@ -100,10 +118,17 @@ fn find_common_prefix(file_names: &[PathBuf]) -> Option<PathBuf> {
         })
 }
 
+#[derive(Clone)]
+struct CommandToCheck {
+    path_in_archive: String,
+    command_name: String,
+    command_title: String,
+}
+
 fn get_commands_from_package_json(
     archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     prefix: &Option<PathBuf>,
-) -> Result<Vec<(String, String)>, String> {
+) -> Result<Vec<CommandToCheck>, String> {
     let package_json_path = if let Some(ref p) = prefix {
         p.join("package.json")
     } else {
@@ -146,10 +171,13 @@ fn get_commands_from_package_json(
                 PathBuf::from(src_path)
             };
 
-            Some((
-                command_file_path_in_archive.to_string_lossy().into_owned(),
+            Some(CommandToCheck {
+                path_in_archive: command_file_path_in_archive
+                    .to_string_lossy()
+                    .into_owned(),
+                command_name: command_name.to_string(),
                 command_title,
-            ))
+            })
         })
         .collect())
 }
@@ -169,12 +197,16 @@ fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<Vec<HeuristicViol
     let commands_to_check = get_commands_from_package_json(&mut archive, &prefix)?;
     let mut violations = Vec::new();
 
-    for (path_in_archive, command_title) in commands_to_check {
-        if let Ok(mut command_file) = archive.by_name(&path_in_archive) {
+    for command_meta in commands_to_check {
+        if let Ok(mut command_file) = archive.by_name(&command_meta.path_in_archive) {
             let mut content = String::new();
             if command_file.read_to_string(&mut content).is_ok() {
                 for heuristic in &heuristics {
-                    if let Some(violation) = heuristic.check(&command_title, &content) {
+                    if let Some(violation) = heuristic.check(
+                        &command_meta.command_name,
+                        &command_meta.command_title,
+                        &content,
+                    ) {
                         violations.push(violation);
                     }
                 }
@@ -182,6 +214,36 @@ fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<Vec<HeuristicViol
         }
     }
     Ok(violations)
+}
+
+const COMPATIBILITY_FILE_NAME: &str = "compatibility.json";
+
+#[derive(Serialize, Deserialize, Default)]
+struct CompatibilityMetadata {
+    #[serde(default)]
+    warnings: Vec<HeuristicViolation>,
+}
+
+fn save_compatibility_metadata(
+    plugin_dir: &Path,
+    warnings: &[HeuristicViolation],
+) -> Result<(), String> {
+    let metadata = CompatibilityMetadata {
+        warnings: warnings.to_vec(),
+    };
+    let data = serde_json::to_string_pretty(&metadata).map_err(|e| e.to_string())?;
+    fs::write(plugin_dir.join(COMPATIBILITY_FILE_NAME), data).map_err(|e| e.to_string())
+}
+
+fn load_compatibility_metadata(plugin_dir: &Path) -> Result<Vec<HeuristicViolation>, String> {
+    let path = plugin_dir.join(COMPATIBILITY_FILE_NAME);
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+
+    let data = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let parsed: CompatibilityMetadata = serde_json::from_str(&data).map_err(|e| e.to_string())?;
+    Ok(parsed.warnings)
 }
 
 fn extract_archive(archive_data: &bytes::Bytes, target_dir: &Path) -> Result<(), String> {
@@ -310,6 +372,7 @@ pub struct PluginInfo {
     pub mode: Option<String>,
     pub author: Option<Author>,
     pub owner: Option<String>,
+    pub compatibility_warnings: Option<Vec<HeuristicViolation>>,
 }
 
 pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, String> {
@@ -363,10 +426,26 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
             }
         };
 
+        let compatibility_metadata = match load_compatibility_metadata(&plugin_dir) {
+            Ok(data) => data,
+            Err(err) => {
+                eprintln!(
+                    "Failed to load compatibility metadata for {}: {}",
+                    plugin_dir_name, err
+                );
+                vec![]
+            }
+        };
+
         if let Some(commands) = package_json.commands {
             for command in commands {
                 let command_file_path = plugin_dir.join(format!("{}.js", command.name));
                 if command_file_path.exists() {
+                    let warnings: Vec<HeuristicViolation> = compatibility_metadata
+                        .iter()
+                        .filter(|warning| warning.command_name == command.name)
+                        .cloned()
+                        .collect();
                     let plugin_info = PluginInfo {
                         title: command
                             .title
@@ -391,6 +470,11 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                         mode: command.mode,
                         author: package_json.author.clone(),
                         owner: package_json.owner.clone(),
+                        compatibility_warnings: if warnings.is_empty() {
+                            None
+                        } else {
+                            Some(warnings)
+                        },
                     };
                     plugins.push(plugin_info);
                 } else {
@@ -417,14 +501,15 @@ pub async fn install_extension(
     let extension_dir = get_extension_dir(&app, &slug)?;
     let content = download_archive(&download_url).await?;
 
-    if !force {
-        let violations = run_heuristic_checks(&content)?;
-        if !violations.is_empty() {
-            return Ok(InstallResult::RequiresConfirmation { violations });
-        }
+    let violations = run_heuristic_checks(&content)?;
+    if !violations.is_empty() && !force {
+        return Ok(InstallResult::RequiresConfirmation {
+            violations: violations.clone(),
+        });
     }
 
     extract_archive(&content, &extension_dir)?;
+    save_compatibility_metadata(&extension_dir, &violations)?;
 
     Ok(InstallResult::Success)
 }
