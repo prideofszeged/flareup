@@ -12,17 +12,20 @@
 		enabled: boolean;
 		provider: 'openRouter' | 'ollama';
 		baseUrl?: string;
+		temperature: number;
 		modelAssociations: Record<string, string>;
 	};
 
 	let aiEnabled = $state(false);
 	let aiProvider = $state<'openRouter' | 'ollama'>('openRouter');
 	let baseUrl = $state('');
+	let temperature = $state(0.7);
 	let apiKey = $state('');
 	let modelAssociations = $state<Record<string, string>>({});
 	let isApiKeySet = $state(false);
 	let ollamaModels = $state<string[]>([]);
 	let isLoadingModels = $state(false);
+	let isSaving = $state(false);
 
 	async function fetchOllamaModels() {
 		if (aiProvider !== 'ollama') return;
@@ -52,6 +55,7 @@
 			aiEnabled = settings.enabled;
 			aiProvider = settings.provider || 'openRouter';
 			baseUrl = settings.baseUrl || '';
+			temperature = settings.temperature ?? 0.7;
 			modelAssociations = settings.modelAssociations ?? {};
 			if (aiProvider === 'ollama') {
 				fetchOllamaModels();
@@ -74,6 +78,7 @@
 	});
 
 	async function saveSettings() {
+		isSaving = true;
 		try {
 			if (apiKey) {
 				await invoke('set_ai_api_key', { key: apiKey });
@@ -84,6 +89,7 @@
 				enabled: aiEnabled,
 				provider: aiProvider,
 				baseUrl: baseUrl,
+				temperature: temperature,
 				modelAssociations: modelAssociations
 			};
 
@@ -91,7 +97,8 @@
 
 			uiStore.toasts.set(Date.now(), {
 				id: Date.now(),
-				title: 'AI Settings Saved',
+				title: 'Settings saved successfully',
+				message: `AI provider: ${aiProvider === 'ollama' ? 'Ollama (Local)' : 'OpenRouter'}`,
 				style: 'SUCCESS'
 			});
 
@@ -104,6 +111,8 @@
 				message: String(error),
 				style: 'FAILURE'
 			});
+		} finally {
+			isSaving = false;
 		}
 	}
 
@@ -173,6 +182,17 @@
 	{/if}
 
 	<div class="space-y-2">
+		<h3 class="text-lg font-medium">Temperature</h3>
+		<p class="text-muted-foreground text-sm">
+			Controls randomness: 0 is focused and deterministic, 1 is creative and varied. Default: 0.7
+		</p>
+		<div class="flex items-center gap-4">
+			<input type="range" min="0" max="1" step="0.1" bind:value={temperature} class="flex-1" />
+			<span class="w-12 text-right font-mono text-sm">{temperature.toFixed(1)}</span>
+		</div>
+	</div>
+
+	<div class="space-y-2">
 		<h3 class="text-lg font-medium">
 			{aiProvider === 'ollama' ? 'Default Model' : 'Model Associations'}
 		</h3>
@@ -226,6 +246,9 @@
 		{/if}
 	</div>
 	<div class="flex justify-end">
-		<Button onclick={saveSettings}>Save AI Settings</Button>
+		<Button onclick={saveSettings} disabled={isSaving}>
+			{isSaving ? 'Saving...' : 'Save AI Settings'}
+		</Button>
 	</div>
+	<div class="text-muted-foreground mt-4 text-center text-xs">Flareup v0.1.0</div>
 </div>

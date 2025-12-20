@@ -148,7 +148,7 @@ impl Default for AiProvider {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AiSettings {
     enabled: bool,
@@ -156,7 +156,25 @@ pub struct AiSettings {
     provider: AiProvider,
     #[serde(default)]
     base_url: Option<String>,
+    #[serde(default = "default_temperature")]
+    temperature: f64,
     model_associations: HashMap<String, String>,
+}
+
+impl Default for AiSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: AiProvider::default(),
+            base_url: None,
+            temperature: default_temperature(),
+            model_associations: HashMap::new(),
+        }
+    }
+}
+
+fn default_temperature() -> f64 {
+    0.7
 }
 
 fn get_settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -214,6 +232,7 @@ pub fn set_ai_settings(app: tauri::AppHandle, settings: AiSettings) -> Result<()
         enabled: settings.enabled,
         provider: settings.provider,
         base_url: settings.base_url,
+        temperature: settings.temperature,
         model_associations: HashMap::new(),
     };
 
@@ -418,12 +437,13 @@ pub async fn ai_ask_stream(
             AiProvider::Ollama => "llama3".to_string(),
         });
 
+    // Use configured temperature, allow creativity parameter to override if provided
     let temperature = match options.creativity.as_deref() {
         Some("none") => 0.0,
         Some("low") => 0.4,
         Some("medium") => 0.7,
         Some("high") => 1.0,
-        _ => 0.7,
+        _ => settings.temperature,
     };
 
     let body = serde_json::json!({
