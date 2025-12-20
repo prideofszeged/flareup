@@ -27,6 +27,11 @@
 		sidecarService.clearLogs();
 	}
 
+	async function copyLogsToClipboard() {
+		const logText = logs.join('\n');
+		await navigator.clipboard.writeText(logText);
+	}
+
 	function handleScroll(event: Event) {
 		const target = event.target as HTMLElement;
 		const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 50;
@@ -70,6 +75,29 @@
 			<span class="text-muted-foreground text-xs">({logs.length} entries)</span>
 		</div>
 		<div class="flex items-center gap-2">
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={copyLogsToClipboard}
+				disabled={logs.length === 0}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="mr-1.5"
+				>
+					<rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+					<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+				</svg>
+				Copy
+			</Button>
 			<Button variant="outline" size="sm" onclick={handleClearLogs} disabled={logs.length === 0}>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
