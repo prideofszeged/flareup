@@ -6,16 +6,20 @@ mod clipboard;
 pub mod clipboard_history;
 mod desktop;
 mod error;
+mod extension_shims;
 mod extensions;
 mod file_search;
 mod filesystem;
 mod frecency;
+mod integrations;
 mod oauth;
+mod quick_toggles;
 mod quicklinks;
 mod snippets;
 mod soulver;
 mod store;
 mod system;
+mod system_monitors;
 
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
 use crate::{app::App, cache::AppCache};
@@ -30,7 +34,7 @@ use std::process::Command;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{Emitter, Manager};
 
 #[tauri::command]
 fn get_installed_apps(app: tauri::AppHandle) -> Vec<App> {
@@ -161,7 +165,7 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
         Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
     };
 
-    let spotlight_shortcut = Shortcut::new(Some(Modifiers::ALT), Code::Space);
+    let spotlight_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::ALT), Code::Space);
     let handle = app.handle().clone();
 
     app.handle().plugin(
@@ -219,6 +223,234 @@ fn setup_input_listener(app: &tauri::AppHandle) {
             );
         }
     }
+}
+
+// Extension shim commands
+#[tauri::command]
+fn shim_translate_path(path: String) -> String {
+    extension_shims::PathShim::translate_path(&path)
+}
+
+#[tauri::command]
+fn shim_run_applescript(script: String) -> extension_shims::ShimResult {
+    extension_shims::AppleScriptShim::run_apple_script(&script)
+}
+
+#[tauri::command]
+fn shim_get_system_info() -> std::collections::HashMap<String, String> {
+    extension_shims::SystemShim::get_system_info()
+}
+
+// System monitor commands
+#[tauri::command]
+fn monitor_get_cpu() -> system_monitors::CpuInfo {
+    system_monitors::get_cpu_info()
+}
+
+#[tauri::command]
+fn monitor_get_memory() -> system_monitors::MemoryInfo {
+    system_monitors::get_memory_info()
+}
+
+#[tauri::command]
+fn monitor_get_disks() -> Vec<system_monitors::DiskInfo> {
+    system_monitors::get_disk_info()
+}
+
+#[tauri::command]
+fn monitor_get_network() -> Vec<system_monitors::NetworkInfo> {
+    system_monitors::get_network_info()
+}
+
+#[tauri::command]
+fn monitor_get_battery() -> Option<system_monitors::BatteryInfo> {
+    system_monitors::get_battery_info()
+}
+
+// Quick toggle commands
+#[tauri::command]
+async fn toggle_wifi(enable: bool) -> Result<(), String> {
+    quick_toggles::toggle_wifi(enable).await
+}
+
+#[tauri::command]
+async fn get_wifi_state() -> Result<bool, String> {
+    quick_toggles::get_wifi_state().await
+}
+
+#[tauri::command]
+async fn toggle_bluetooth(enable: bool) -> Result<(), String> {
+    quick_toggles::toggle_bluetooth(enable).await
+}
+
+#[tauri::command]
+async fn get_bluetooth_state() -> Result<bool, String> {
+    quick_toggles::get_bluetooth_state().await
+}
+
+#[tauri::command]
+async fn toggle_dark_mode(enable: bool) -> Result<(), String> {
+    quick_toggles::toggle_dark_mode(enable).await
+}
+
+#[tauri::command]
+async fn get_dark_mode_state() -> Result<bool, String> {
+    quick_toggles::get_dark_mode_state().await
+}
+
+#[tauri::command]
+fn set_brightness(percentage: u32) -> Result<(), String> {
+    quick_toggles::set_brightness(percentage)
+}
+
+#[tauri::command]
+fn get_brightness() -> Result<u32, String> {
+    quick_toggles::get_brightness()
+}
+
+// GitHub integration commands
+#[tauri::command]
+async fn github_start_auth() -> Result<integrations::github::DeviceCodeResponse, String> {
+    integrations::github::start_device_flow().await
+}
+
+#[tauri::command]
+async fn github_poll_auth(device_code: String) -> Result<Option<String>, String> {
+    integrations::github::poll_for_token(&device_code).await
+}
+
+#[tauri::command]
+fn github_store_token(token: String) -> Result<(), String> {
+    integrations::github::store_token(&token)
+}
+
+#[tauri::command]
+fn github_is_authenticated() -> Result<bool, String> {
+    Ok(integrations::github::get_token()?.is_some())
+}
+
+#[tauri::command]
+fn github_logout() -> Result<(), String> {
+    integrations::github::delete_token()
+}
+
+#[tauri::command]
+async fn github_get_current_user() -> Result<integrations::github::User, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.get_current_user().await
+}
+
+// GitHub Issues commands
+#[tauri::command]
+async fn github_list_issues(
+    owner: String,
+    repo: String,
+    state: Option<String>,
+) -> Result<Vec<integrations::github::Issue>, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.list_issues(&owner, &repo, state.as_deref()).await
+}
+
+#[tauri::command]
+async fn github_get_issue(
+    owner: String,
+    repo: String,
+    number: u64,
+) -> Result<integrations::github::Issue, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.get_issue(&owner, &repo, number).await
+}
+
+#[tauri::command]
+async fn github_create_issue(
+    owner: String,
+    repo: String,
+    title: String,
+    body: Option<String>,
+    labels: Option<Vec<String>>,
+    assignees: Option<Vec<String>>,
+) -> Result<integrations::github::Issue, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client
+        .create_issue(&owner, &repo, title, body, labels, assignees)
+        .await
+}
+
+#[tauri::command]
+async fn github_update_issue(
+    owner: String,
+    repo: String,
+    number: u64,
+    title: Option<String>,
+    body: Option<String>,
+    state: Option<String>,
+    labels: Option<Vec<String>>,
+    assignees: Option<Vec<String>>,
+) -> Result<integrations::github::Issue, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client
+        .update_issue(
+            &owner,
+            &repo,
+            number,
+            title,
+            body,
+            state.as_deref(),
+            labels,
+            assignees,
+        )
+        .await
+}
+
+#[tauri::command]
+async fn github_close_issue(
+    owner: String,
+    repo: String,
+    number: u64,
+) -> Result<integrations::github::Issue, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.close_issue(&owner, &repo, number).await
+}
+
+#[tauri::command]
+async fn github_list_my_issues(
+    state: Option<String>,
+) -> Result<Vec<integrations::github::Issue>, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.list_my_issues(state.as_deref()).await
+}
+
+// GitHub Search commands
+#[tauri::command]
+async fn github_search_issues(
+    query: String,
+) -> Result<integrations::github::SearchResult<integrations::github::Issue>, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.search_issues(&query).await
+}
+
+#[tauri::command]
+async fn github_search_repos(
+    query: String,
+) -> Result<integrations::github::SearchResult<integrations::github::Repository>, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.search_repos(&query).await
+}
+
+// GitHub Repository commands
+#[tauri::command]
+async fn github_list_repos() -> Result<Vec<integrations::github::Repository>, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.list_user_repos().await
+}
+
+#[tauri::command]
+async fn github_get_repo(
+    owner: String,
+    repo: String,
+) -> Result<integrations::github::Repository, String> {
+    let client = integrations::github::GitHubClient::from_stored_token()?;
+    client.get_repo(&owner, &repo).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -308,7 +540,39 @@ pub fn run() {
             ai::get_ai_settings,
             ai::set_ai_settings,
             ai::ai_can_access,
-            soulver::calculate_soulver
+            soulver::calculate_soulver,
+            shim_translate_path,
+            shim_run_applescript,
+            shim_get_system_info,
+            monitor_get_cpu,
+            monitor_get_memory,
+            monitor_get_disks,
+            monitor_get_network,
+            monitor_get_battery,
+            toggle_wifi,
+            get_wifi_state,
+            toggle_bluetooth,
+            get_bluetooth_state,
+            toggle_dark_mode,
+            get_dark_mode_state,
+            set_brightness,
+            get_brightness,
+            github_start_auth,
+            github_poll_auth,
+            github_store_token,
+            github_is_authenticated,
+            github_logout,
+            github_get_current_user,
+            github_list_issues,
+            github_get_issue,
+            github_create_issue,
+            github_update_issue,
+            github_close_issue,
+            github_list_my_issues,
+            github_search_issues,
+            github_search_repos,
+            github_list_repos,
+            github_get_repo
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

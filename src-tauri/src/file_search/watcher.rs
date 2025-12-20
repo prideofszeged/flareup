@@ -4,14 +4,56 @@ use notify::{RecursiveMode, Watcher};
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, DebouncedEvent};
 use std::{
     env,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, SystemTime},
 };
 use tauri::{AppHandle, Manager};
 
+/// Directories to exclude from file watching
+const EXCLUDED_DIRS: &[&str] = &[
+    ".wine",
+    ".wine-qoder",
+    ".cache",
+    ".local/share/Trash",
+    ".gradle",
+    "node_modules",
+    ".npm",
+    ".cargo",
+    ".rustup",
+    ".pnpm-store",
+    "target",
+    "build",
+    ".git",
+    ".svn",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    "venv",
+];
+
+/// Check if a path should be excluded from watching
+fn should_exclude_path(path: &Path) -> bool {
+    path.components().any(|component| {
+        if let std::path::Component::Normal(os_str) = component {
+            if let Some(name) = os_str.to_str() {
+                return EXCLUDED_DIRS.iter().any(|excluded| {
+                    name == *excluded || name.starts_with(&format!("{}.", excluded))
+                });
+            }
+        }
+        false
+    })
+}
+
 async fn handle_event(app_handle: AppHandle, debounced_event: DebouncedEvent) {
     let manager = app_handle.state::<FileSearchManager>();
     let path = &debounced_event.event.paths[0];
+
+    // Skip excluded paths
+    if should_exclude_path(path) {
+        return;
+    }
 
     if path.exists() {
         if let Ok(metadata) = path.metadata() {
@@ -82,14 +124,43 @@ pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {
     )
     .map_err(|e| AppError::FileSearch(e.to_string()))?;
 
-    debouncer
-        .watcher()
-        .watch(&PathBuf::from(&home_dir), RecursiveMode::Recursive)
-        .map_err(|e| AppError::FileSearch(e.to_string()))?;
+    // Watch only specific common directories instead of entire home
+    let watch_dirs = [
+        "Documents",
+        "Downloads", 
+        "Desktop",
+        "Pictures",
+        "Videos",
+        "Music",
+        "Projects",
+        "Code",
+        "dev",
+        "workspace",
+    ];
 
-    debouncer
-        .cache()
-        .add_root(&PathBuf::from(&home_dir), RecursiveMode::Recursive);
+    let mut watch_count = 0;
+    for dir_name in &watch_dirs {
+        let dir_path = PathBuf::from(&home_dir).join(dir_name);
+        if dir_path.exists() && dir_path.is_dir() {
+            if let Err(e) = debouncer
+                .watcher()
+                .watch(&dir_path, RecursiveMode::Recursive)
+            {
+                eprintln!("Failed to watch {}: {:?}", dir_path.display(), e);
+            } else {
+                debouncer
+                    .cache()
+                    .add_root(&dir_path, RecursiveMode::Recursive);
+                watch_count += 1;
+            }
+        }
+    }
+
+    if watch_count == 0 {
+        eprintln!("Warning: No directories are being watched for file search");
+    } else {
+        println!("✅ Watching {} directories for file changes", watch_count);
+    }
 
     app_handle.manage(debouncer);
 

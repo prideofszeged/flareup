@@ -152,6 +152,7 @@ impl SnippetManager {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn find_snippet_by_keyword(&self, keyword: &str) -> Result<Option<Snippet>, AppError> {
         self.store.query_row(
             "SELECT id, name, keyword, content, created_at, updated_at, times_used, last_used_at FROM snippets WHERE keyword = ?1",

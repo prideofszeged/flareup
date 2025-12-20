@@ -20,6 +20,7 @@ import {
 	getFrontmostApplication,
 	showInFinder,
 	trash,
+	runAppleScript,
 	AI as AIConstant
 } from './environment';
 import { preferencesStore } from '../preferences';
@@ -79,6 +80,7 @@ export const getRaycastApi = () => {
 		showToast,
 		showHUD,
 		trash,
+		runAppleScript,
 		useNavigation,
 		usePersistentState: <T>(
 			key: string,

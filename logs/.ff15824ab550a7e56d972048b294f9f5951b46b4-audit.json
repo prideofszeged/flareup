@@ -9,6 +9,11 @@
             "date": 1765149019261,
             "name": "/home/steven/scratch/flareup/logs/mcp-puppeteer-2025-12-07.log",
             "hash": "5f604a2a05372b44534fd8dbd90eecdfaa0125e9789c1780cddcf4ecdb2580a1"
+        },
+        {
+            "date": 1765198263300,
+            "name": "/home/steven/scratch/flareup/logs/mcp-puppeteer-2025-12-08.log",
+            "hash": "9a778a43ff4fbe6968ee775409af4581b65ae2fe6e6eacc6283c5f28ca68d501"
         }
     ],
     "hashType": "sha256"

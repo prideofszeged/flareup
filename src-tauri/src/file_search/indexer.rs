@@ -1,5 +1,5 @@
 use super::{manager::FileSearchManager, types::IndexedFile};
-use std::{env, time::SystemTime};
+use std::{env, path::PathBuf, time::SystemTime};
 use tauri::{AppHandle, Manager};
 use walkdir::{DirEntry, WalkDir};
 
@@ -14,8 +14,30 @@ pub async fn build_initial_index(app_handle: AppHandle) {
         }
     };
 
-    let walker = WalkDir::new(home_dir).into_iter();
-    for entry in walker.filter_entry(|e| !is_hidden(e) && !is_excluded(e)) {
+    // Index only specific directories, not entire home
+    let index_dirs = [
+        "Documents",
+        "Downloads",
+        "Desktop",
+        "Pictures",
+        "Videos",
+        "Music",
+        "Projects",
+        "Code",
+        "dev",
+        "workspace",
+    ];
+
+    let mut indexed_count = 0;
+    for dir_name in &index_dirs {
+        let dir_path = PathBuf::from(&home_dir).join(dir_name);
+        if !dir_path.exists() || !dir_path.is_dir() {
+            continue;
+        }
+
+        println!("Indexing {}...", dir_path.display());
+        let walker = WalkDir::new(&dir_path).into_iter();
+        for entry in walker.filter_entry(|e| !is_hidden(e) && !is_excluded(e)) {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -69,9 +91,13 @@ pub async fn build_initial_index(app_handle: AppHandle) {
 
         if let Err(e) = manager.add_file(&indexed_file) {
             eprintln!("Failed to add file to index: {:?}", e);
+        } else {
+            indexed_count += 1;
         }
     }
-    println!("Finished initial file index build.");
+    }
+    
+    println!("✅ Finished initial file index build. Indexed {} files.", indexed_count);
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -87,18 +113,36 @@ fn is_excluded(entry: &DirEntry) -> bool {
     let excluded_dirs = [
         "node_modules",
         ".git",
+        ".svn",
         "target",
+        "build",
         ".vscode",
         ".idea",
         "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
         ".cache",
+        ".local/share/Trash",
+        ".gradle",
+        ".wine",
+        ".wine-qoder",
+        ".npm",
+        ".cargo",
+        ".rustup",
+        ".pnpm-store",
+        "venv",
+        ".venv",
         "Library",
         "Application Support",
         "AppData",
     ];
     path.components().any(|component| {
-        excluded_dirs
-            .iter()
-            .any(|&excluded| component.as_os_str() == excluded)
+        if let Some(name) = component.as_os_str().to_str() {
+            excluded_dirs.iter().any(|&excluded| {
+                name == excluded || name.starts_with(&format!("{}.", excluded))
+            })
+        } else {
+            false
+        }
     })
 }
