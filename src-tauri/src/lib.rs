@@ -166,28 +166,47 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     };
 
     let spotlight_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::ALT), Code::Space);
-    let handle = app.handle().clone();
 
-    app.handle().plugin(
-        tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(move |_app, shortcut, event| {
-                if shortcut == &spotlight_shortcut && event.state() == ShortcutState::Pressed {
-                    let spotlight_window = handle.get_webview_window("main").unwrap();
-                    println!("Spotlight window: {:?}", spotlight_window);
-                    if spotlight_window.is_visible().unwrap_or(false) {
-                        spotlight_window.hide().unwrap();
-                    } else {
-                        spotlight_window.show().unwrap();
-                        spotlight_window.set_focus().unwrap();
+    // Register the shortcut handler
+    println!("[Hotkey] Registering global shortcut: Super+Alt+Space");
+    app.global_shortcut()
+        .on_shortcut(spotlight_shortcut, move |app, shortcut, event| {
+            // Log ALL events for debugging
+            println!(
+                "[Hotkey] Event received: shortcut={:?}, state={:?}",
+                shortcut,
+                event.state()
+            );
+
+            if event.state() == ShortcutState::Pressed {
+                println!("[Hotkey] Processing PRESSED event");
+
+                if let Some(window) = app.get_webview_window("main") {
+                    match window.is_visible() {
+                        Ok(true) => {
+                            println!("[Hotkey] Window is visible, hiding...");
+                            let _ = window.hide();
+                        }
+                        Ok(false) => {
+                            println!("[Hotkey] Window is hidden, showing...");
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                        Err(e) => {
+                            eprintln!("[Hotkey] Error checking window visibility: {}", e);
+                        }
                     }
+                } else {
+                    eprintln!("[Hotkey] Main window not found!");
                 }
-            })
-            .build(),
-    )?;
+            } else {
+                println!("[Hotkey] Ignoring RELEASED event");
+            }
+        })?;
 
-    if !app.global_shortcut().is_registered(spotlight_shortcut) {
-        app.global_shortcut().register(spotlight_shortcut)?;
-    }
+    app.global_shortcut().register(spotlight_shortcut)?;
+    println!("[Hotkey] Global shortcut registered successfully");
+
     Ok(())
 }
 
@@ -481,6 +500,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
