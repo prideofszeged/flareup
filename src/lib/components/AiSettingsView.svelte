@@ -5,24 +5,57 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import PasswordInput from './PasswordInput.svelte';
+	import * as Select from './ui/select';
 	import { uiStore } from '$lib/ui.svelte';
 
 	type AiSettings = {
 		enabled: boolean;
+		provider: 'openRouter' | 'ollama';
+		baseUrl?: string;
 		modelAssociations: Record<string, string>;
 	};
 
 	let aiEnabled = $state(false);
+	let aiProvider = $state<'openRouter' | 'ollama'>('openRouter');
+	let baseUrl = $state('');
 	let apiKey = $state('');
 	let modelAssociations = $state<Record<string, string>>({});
 	let isApiKeySet = $state(false);
+	let ollamaModels = $state<string[]>([]);
+	let isLoadingModels = $state(false);
+
+	async function fetchOllamaModels() {
+		if (aiProvider !== 'ollama') return;
+		isLoadingModels = true;
+		try {
+			const models = await invoke<string[]>('get_ollama_models', {
+				baseUrl: baseUrl || 'http://localhost:11434/v1'
+			});
+			ollamaModels = models;
+		} catch (error) {
+			console.error('Failed to fetch Ollama models:', error);
+			uiStore.toasts.set(Date.now(), {
+				id: Date.now(),
+				title: 'Failed to fetch Ollama models',
+				message: String(error),
+				style: 'FAILURE'
+			});
+		} finally {
+			isLoadingModels = false;
+		}
+	}
 
 	async function loadSettings() {
 		try {
 			isApiKeySet = await invoke('is_ai_api_key_set');
 			const settings = await invoke<AiSettings>('get_ai_settings');
 			aiEnabled = settings.enabled;
+			aiProvider = settings.provider || 'openRouter';
+			baseUrl = settings.baseUrl || '';
 			modelAssociations = settings.modelAssociations ?? {};
+			if (aiProvider === 'ollama') {
+				fetchOllamaModels();
+			}
 		} catch (error) {
 			console.error('Failed to load AI settings:', error);
 			uiStore.toasts.set(Date.now(), {
@@ -34,6 +67,12 @@
 		}
 	}
 
+	$effect(() => {
+		if (aiProvider === 'ollama') {
+			fetchOllamaModels();
+		}
+	});
+
 	async function saveSettings() {
 		try {
 			if (apiKey) {
@@ -43,6 +82,8 @@
 
 			const settingsToSave: AiSettings = {
 				enabled: aiEnabled,
+				provider: aiProvider,
+				baseUrl: baseUrl,
 				modelAssociations: modelAssociations
 			};
 
@@ -85,39 +126,104 @@
 	</div>
 
 	<div class="space-y-2">
-		<h3 class="text-lg font-medium">API Key</h3>
-		<p class="text-muted-foreground text-sm">
-			Your OpenRouter API key is stored securely in your system's keychain.
-		</p>
-		<div class="flex items-center gap-2">
-			<PasswordInput
-				bind:value={apiKey}
-				placeholder={isApiKeySet ? '••••••••••••' : 'Enter your OpenRouter API key'}
-				class="flex-grow"
-			/>
-			{#if isApiKeySet}
-				<Button variant="destructive" onclick={clearApiKey}>Clear</Button>
-			{/if}
-		</div>
+		<h3 class="text-lg font-medium">AI Provider</h3>
+		<Select.Root
+			type="single"
+			value={aiProvider}
+			onValueChange={(v) => {
+				console.log('AI Provider changed to:', v);
+				aiProvider = v as 'openRouter' | 'ollama';
+			}}
+		>
+			<Select.Trigger class="w-full">
+				{aiProvider === 'openRouter' ? 'OpenRouter' : 'Ollama (Local)'}
+			</Select.Trigger>
+			<Select.Content>
+				<Select.Item value="openRouter">OpenRouter</Select.Item>
+				<Select.Item value="ollama">Ollama (Local)</Select.Item>
+			</Select.Content>
+		</Select.Root>
 	</div>
 
-	<div class="space-y-2">
-		<h3 class="text-lg font-medium">Model Associations</h3>
-		<p class="text-muted-foreground text-sm">
-			Associate internal model identifiers with specific models available through OpenRouter.
-		</p>
-		<div class="grid grid-cols-[auto_1fr] items-center gap-4">
-			{#each Object.entries(modelAssociations) as [raycastModel, openRouterModel] (raycastModel)}
-				<span class="text-sm font-medium">{raycastModel}</span>
-				<Input
-					value={openRouterModel}
-					onchange={(e) => {
-						modelAssociations[raycastModel] = (e.target as HTMLInputElement)?.value;
-					}}
-					class="w-full"
+	{#if aiProvider === 'openRouter'}
+		<div class="space-y-2">
+			<h3 class="text-lg font-medium">OpenRouter API Key</h3>
+			<p class="text-muted-foreground text-sm">
+				Your OpenRouter API key is stored securely in your system's keychain.
+			</p>
+			<div class="flex items-center gap-2">
+				<PasswordInput
+					bind:value={apiKey}
+					placeholder={isApiKeySet ? '••••••••••••' : 'Enter your OpenRouter API key'}
+					class="flex-grow"
 				/>
-			{/each}
+				{#if isApiKeySet}
+					<Button variant="destructive" onclick={clearApiKey}>Clear</Button>
+				{/if}
+			</div>
 		</div>
+	{:else}
+		<div class="space-y-2">
+			<h3 class="text-lg font-medium">Ollama Base URL</h3>
+			<p class="text-muted-foreground text-sm">
+				The endpoint for your local Ollama instance (default: http://localhost:11434/v1).
+			</p>
+			<Input bind:value={baseUrl} placeholder="http://localhost:11434/v1" />
+		</div>
+	{/if}
+
+	<div class="space-y-2">
+		<h3 class="text-lg font-medium">
+			{aiProvider === 'ollama' ? 'Default Model' : 'Model Associations'}
+		</h3>
+		<p class="text-muted-foreground text-sm">
+			{#if aiProvider === 'ollama'}
+				Select the default Ollama model to use for AI chat.
+			{:else}
+				Associate internal model identifiers with specific models available through OpenRouter.
+			{/if}
+		</p>
+
+		{#if aiProvider === 'ollama'}
+			<Select.Root
+				type="single"
+				value={modelAssociations['default'] || ''}
+				onValueChange={(v) => (modelAssociations['default'] = v)}
+			>
+				<Select.Trigger class="w-full">
+					{ollamaModels.includes(modelAssociations['default'] || '')
+						? modelAssociations['default']
+						: 'Select a local model'}
+				</Select.Trigger>
+				<Select.Content>
+					{#if isLoadingModels}
+						<Select.Item value="" disabled>Loading models...</Select.Item>
+					{:else if ollamaModels.length === 0}
+						<Select.Item value="" disabled
+							>No models found. Is Ollama running at {baseUrl ||
+								'http://localhost:11434/v1'}?</Select.Item
+						>
+					{:else}
+						{#each ollamaModels as model}
+							<Select.Item value={model}>{model}</Select.Item>
+						{/each}
+					{/if}
+				</Select.Content>
+			</Select.Root>
+		{:else}
+			<div class="grid grid-cols-[auto_1fr] items-center gap-4">
+				{#each Object.entries(modelAssociations) as [raycastModel, selectedModel] (raycastModel)}
+					<span class="text-sm font-medium">{raycastModel}</span>
+					<Input
+						value={selectedModel}
+						onchange={(e) => {
+							modelAssociations[raycastModel] = (e.target as HTMLInputElement)?.value;
+						}}
+						class="w-full"
+					/>
+				{/each}
+			</div>
+		{/if}
 	</div>
 	<div class="flex justify-end">
 		<Button onclick={saveSettings}>Save AI Settings</Button>

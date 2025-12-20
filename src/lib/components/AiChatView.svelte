@@ -4,6 +4,7 @@
 	import { tick, onMount } from 'svelte';
 	import { Loader2, Send, Stars } from '@lucide/svelte';
 	import { focusManager } from '$lib/focus.svelte';
+	import { viewManager } from '$lib/viewManager.svelte';
 	import HeaderInput from './HeaderInput.svelte';
 	import MainLayout from './layout/MainLayout.svelte';
 	import Header from './layout/Header.svelte';
@@ -135,7 +136,7 @@
 					</div>
 					<h2 class="text-2xl font-semibold">How can I help you today?</h2>
 					<p class="text-muted-foreground mt-2 max-w-sm">
-						Ask anything, from coding questions to general knowledge. AI is powered by OpenRouter.
+						Ask anything, from coding questions to general knowledge. Press Ctrl+, to configure.
 					</p>
 				</div>
 			{:else}
@@ -171,6 +172,11 @@
 					title: 'Send',
 					shortcut: { key: 'Enter', modifiers: [] },
 					handler: handleSubmit
+				},
+				{
+					title: 'Configure AI',
+					shortcut: { key: ',', modifiers: ['ctrl'] },
+					handler: () => viewManager.showSettings()
 				},
 				{
 					title: 'Clear Chat',

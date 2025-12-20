@@ -135,10 +135,27 @@ static DEFAULT_AI_MODELS: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(
     m
 });
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AiProvider {
+    OpenRouter,
+    Ollama,
+}
+
+impl Default for AiProvider {
+    fn default() -> Self {
+        AiProvider::OpenRouter
+    }
+}
+
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AiSettings {
     enabled: bool,
+    #[serde(default)]
+    provider: AiProvider,
+    #[serde(default)]
+    base_url: Option<String>,
     model_associations: HashMap<String, String>,
 }
 
@@ -195,6 +212,8 @@ pub fn set_ai_settings(app: tauri::AppHandle, settings: AiSettings) -> Result<()
 
     let mut settings_to_save = AiSettings {
         enabled: settings.enabled,
+        provider: settings.provider,
+        base_url: settings.base_url,
         model_associations: HashMap::new(),
     };
 
@@ -332,6 +351,42 @@ async fn fetch_and_log_usage(
 }
 
 #[tauri::command]
+pub async fn get_ollama_models(base_url: String) -> Result<Vec<String>, String> {
+    let client = reqwest::Client::new();
+    let base = if base_url.trim().is_empty() {
+        "http://localhost:11434/v1".to_string()
+    } else {
+        base_url
+    };
+    let url = format!("{}/models", base.trim_end_matches('/'));
+
+    let res = client.get(&url).send().await.map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Err(format!("Failed to fetch models: {}", res.status()));
+    }
+
+    let json: Value = res.json().await.map_err(|e| e.to_string())?;
+
+    // Ollama's /v1/models returns an object with a "data" array of models
+    // Each model has an "id" field in the OpenAI-compatible API
+    let mut model_ids = Vec::new();
+    if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
+        for model in data {
+            if let Some(id) = model.get("id").and_then(|id| id.as_str()) {
+                model_ids.push(id.to_string());
+            }
+        }
+    } else {
+        // Fallback for Ollama's native API /api/tags if /v1/models fails or is different
+        // But since we are using /v1 base_url, /v1/models is preferred
+        return Err("Unexpected response format from Ollama models API".to_string());
+    }
+
+    Ok(model_ids)
+}
+
+#[tauri::command]
 pub async fn ai_ask_stream(
     app_handle: AppHandle,
     request_id: String,
@@ -343,11 +398,14 @@ pub async fn ai_ask_stream(
         return Err("AI features are not enabled.".to_string());
     }
 
-    let api_key =
+    let api_key = if settings.provider == AiProvider::OpenRouter {
         match get_keyring_entry().and_then(|entry| entry.get_password().map_err(AppError::from)) {
             Ok(key) => key,
             Err(e) => return Err(e.to_string()),
-        };
+        }
+    } else {
+        String::new() // Ollama doesn't need an API key
+    };
 
     let model_key = options.model.unwrap_or_else(|| "default".to_string());
 
@@ -355,7 +413,10 @@ pub async fn ai_ask_stream(
         .model_associations
         .get(&model_key)
         .cloned()
-        .unwrap_or_else(|| "mistralai/mistral-7b-instruct:free".to_string());
+        .unwrap_or_else(|| match settings.provider {
+            AiProvider::OpenRouter => "mistralai/mistral-7b-instruct:free".to_string(),
+            AiProvider::Ollama => "llama3".to_string(),
+        });
 
     let temperature = match options.creativity.as_deref() {
         Some("none") => 0.0,
@@ -372,15 +433,32 @@ pub async fn ai_ask_stream(
         "temperature": temperature,
     });
 
+    let (api_url, auth_header) = match settings.provider {
+        AiProvider::OpenRouter => (
+            "https://openrouter.ai/api/v1/chat/completions".to_string(),
+            Some(format!("Bearer {}", api_key)),
+        ),
+        AiProvider::Ollama => {
+            let base = settings
+                .base_url
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| "http://localhost:11434/v1".to_string());
+            (
+                format!("{}/chat/completions", base.trim_end_matches('/')),
+                None,
+            )
+        }
+    };
+
     let client = reqwest::Client::new();
-    let res = client
-        .post("https://openrouter.ai/api/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("HTTP-Referer", "http://localhost")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let mut request = client.post(&api_url).json(&body);
+
+    if let Some(auth) = auth_header {
+        request = request.header("Authorization", auth);
+        request = request.header("HTTP-Referer", "http://localhost");
+    }
+
+    let res = request.send().await.map_err(|e| e.to_string())?;
 
     let open_router_request_id = res
         .headers()
@@ -440,13 +518,15 @@ pub async fn ai_ask_stream(
         )
         .map_err(|e| e.to_string())?;
 
-    if let Some(or_req_id) = open_router_request_id {
-        let handle_clone = app_handle.clone();
-        tokio::spawn(async move {
-            if let Err(e) = fetch_and_log_usage(or_req_id, api_key, handle_clone).await {
-                eprintln!("[AI Usage Tracking] Error: {}", e);
-            }
-        });
+    if settings.provider == AiProvider::OpenRouter {
+        if let Some(or_req_id) = open_router_request_id {
+            let handle_clone = app_handle.clone();
+            tokio::spawn(async move {
+                if let Err(e) = fetch_and_log_usage(or_req_id, api_key, handle_clone).await {
+                    eprintln!("[AI Usage Tracking] Error: {}", e);
+                }
+            });
+        }
     }
 
     Ok(())
