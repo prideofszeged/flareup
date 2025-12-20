@@ -25,7 +25,9 @@
 	import snippetIcon from '$lib/assets/snippets-package-1616x16@2x.png?inline';
 	import storeCommandIcon from '$lib/assets/command-store-1616x16@2x.png?inline';
 	import quicklinkIcon from '$lib/assets/quicklinks-package-1616x16@2x.png?inline';
+	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
 	import { invoke } from '@tauri-apps/api/core';
+	import AiChatView from '$lib/components/AiChatView.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -118,6 +120,19 @@
 		owner: 'flare'
 	};
 
+	const aiChatPlugin: PluginInfo = {
+		title: 'Ask AI',
+		description: 'Chat with AI to answer questions, write code, and more',
+		pluginTitle: 'AI',
+		pluginName: 'ai',
+		commandName: 'ask-ai',
+		pluginPath: 'builtin:ai-chat',
+		icon: starsSquareIcon,
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
 	const { pluginList, currentPreferences } = $derived(uiStore);
 	const allPlugins = $derived([
 		...pluginList,
@@ -127,7 +142,8 @@
 		createQuicklinkPlugin,
 		createSnippetPlugin,
 		importSnippetsPlugin,
-		fileSearchPlugin
+		fileSearchPlugin,
+		aiChatPlugin
 	]);
 
 	const {
@@ -281,6 +297,8 @@
 	<ImportSnippets onBack={viewManager.showCommandPalette} snippetsToImport={snippetsForImport} />
 {:else if currentView === 'file-search'}
 	<FileSearchView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'ai-chat'}
+	<AiChatView onBack={viewManager.showCommandPalette} />
 {/if}
 
 {#if showLogViewer}

@@ -17,7 +17,8 @@ export type ViewState =
 	| 'quicklink-form'
 	| 'create-snippet-form'
 	| 'import-snippets'
-	| 'file-search';
+	| 'file-search'
+	| 'ai-chat';
 
 type OauthState = {
 	url: string;
@@ -81,6 +82,10 @@ class ViewManager {
 		this.currentView = 'file-search';
 	};
 
+	showAiChat = () => {
+		this.currentView = 'ai-chat';
+	};
+
 	runPlugin = async (plugin: PluginInfo) => {
 		switch (plugin.pluginPath) {
 			case 'builtin:store':
@@ -103,6 +108,9 @@ class ViewManager {
 				return;
 			case 'builtin:file-search':
 				this.showFileSearch();
+				return;
+			case 'builtin:ai-chat':
+				this.showAiChat();
 				return;
 		}
 
