@@ -390,3 +390,45 @@ info:
 [group('util')]
 @help:
     just --list --unsorted
+
+# Enable Flare to start on login
+[group('util')]
+autostart:
+    #!/usr/bin/env bash
+    set -e
+    
+    LOCAL_BIN="${HOME}/.local/bin"
+    AUTOSTART_DIR="${HOME}/.config/autostart"
+    DESKTOP_FILE="${AUTOSTART_DIR}/flare.desktop"
+    
+    mkdir -p "$AUTOSTART_DIR"
+    
+    echo "[Desktop Entry]" > "$DESKTOP_FILE"
+    echo "Type=Application" >> "$DESKTOP_FILE"
+    echo "Name=Flare" >> "$DESKTOP_FILE"
+    echo "Comment=Spotlight-like launcher for Linux" >> "$DESKTOP_FILE"
+    echo "Exec=${LOCAL_BIN}/flare.AppImage" >> "$DESKTOP_FILE"
+    echo "Icon=flare" >> "$DESKTOP_FILE"
+    echo "Terminal=false" >> "$DESKTOP_FILE"
+    echo "Categories=Utility;" >> "$DESKTOP_FILE"
+    echo "X-GNOME-Autostart-enabled=true" >> "$DESKTOP_FILE"
+    echo "StartupNotify=false" >> "$DESKTOP_FILE"
+    
+    echo "✅ Autostart enabled"
+    echo "Flare will start automatically on login"
+    echo "Desktop file: $DESKTOP_FILE"
+
+# Disable Flare autostart
+[group('util')]
+remove-autostart:
+    #!/usr/bin/env bash
+    set -e
+    
+    DESKTOP_FILE="${HOME}/.config/autostart/flare.desktop"
+    
+    if [ -f "$DESKTOP_FILE" ]; then
+        rm "$DESKTOP_FILE"
+        echo "✅ Autostart disabled"
+    else
+        echo "ℹ️  Autostart was not enabled"
+    fi

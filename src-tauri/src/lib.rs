@@ -190,7 +190,12 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
                         Ok(false) => {
                             println!("[Hotkey] Window is hidden, showing...");
                             let _ = window.show();
-                            let _ = window.set_focus();
+                            // Small delay to ensure window is fully visible before focusing
+                            let window_clone = window.clone();
+                            tauri::async_runtime::spawn(async move {
+                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                                let _ = window_clone.set_focus();
+                            });
                         }
                         Err(e) => {
                             eprintln!("[Hotkey] Error checking window visibility: {}", e);
