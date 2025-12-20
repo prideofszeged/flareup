@@ -19,6 +19,7 @@
 	import FileSearchView from '$lib/components/FileSearchView.svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import CommandDeeplinkConfirm from '$lib/components/CommandDeeplinkConfirm.svelte';
+	import LogViewer from '$lib/components/LogViewer.svelte';
 	import clipboardHistoryCommandIcon from '$lib/assets/command-clipboard-history-1616x16@2x.png?inline';
 	import fileSearchCommandIcon from '$lib/assets/command-file-search-1616x16@2x.png?inline';
 	import snippetIcon from '$lib/assets/snippets-package-1616x16@2x.png?inline';
@@ -138,6 +139,8 @@
 		commandToConfirm
 	} = $derived(viewManager);
 
+	let showLogViewer = $state(false);
+
 	onMount(() => {
 		sidecarService.setOnGoBackToPluginList(viewManager.showCommandPalette);
 		sidecarService.start();
@@ -172,6 +175,13 @@
 	});
 
 	function handleKeydown(event: KeyboardEvent) {
+		// Toggle log viewer with Cmd/Ctrl + Shift + L
+		if (event.key === 'L' && (event.metaKey || event.ctrlKey) && event.shiftKey) {
+			event.preventDefault();
+			showLogViewer = !showLogViewer;
+			return;
+		}
+
 		if (
 			currentView === 'command-palette' &&
 			event.key === ',' &&
@@ -271,4 +281,8 @@
 	<ImportSnippets onBack={viewManager.showCommandPalette} snippetsToImport={snippetsForImport} />
 {:else if currentView === 'file-search'}
 	<FileSearchView onBack={viewManager.showCommandPalette} />
+{/if}
+
+{#if showLogViewer}
+	<LogViewer onClose={() => (showLogViewer = false)} />
 {/if}

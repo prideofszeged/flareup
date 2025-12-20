@@ -26,7 +26,7 @@ class SidecarService {
 	oauthState: OauthState = $state(null);
 	logs: string[] = $state([]);
 
-	constructor() {}
+	constructor() { }
 
 	get isRunning() {
 		return this.#sidecarChild !== null;
@@ -337,6 +337,10 @@ class SidecarService {
 	#log = (message: string) => {
 		console.log(`[SidecarService] ${message}`);
 		this.logs.push(message);
+	};
+
+	clearLogs = () => {
+		this.logs = [];
 	};
 }
 
