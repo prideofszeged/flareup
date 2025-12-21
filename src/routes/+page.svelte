@@ -151,6 +151,7 @@
 		oauthState,
 		oauthStatus,
 		quicklinkToEdit,
+		snippetToEdit,
 		snippetsForImport,
 		commandToConfirm
 	} = $derived(viewManager);
@@ -284,7 +285,7 @@
 {:else if currentView === 'clipboard-history'}
 	<ClipboardHistoryView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'search-snippets'}
-	<SearchSnippets onBack={viewManager.showCommandPalette} />
+	<SearchSnippets onBack={viewManager.showCommandPalette} onEdit={viewManager.showSnippetForm} />
 {:else if currentView === 'quicklink-form'}
 	<QuicklinkForm
 		quicklink={quicklinkToEdit}
@@ -292,7 +293,11 @@
 		onSave={viewManager.showCommandPalette}
 	/>
 {:else if currentView === 'create-snippet-form'}
-	<SnippetForm onBack={viewManager.showCommandPalette} onSave={viewManager.showCommandPalette} />
+	<SnippetForm
+		editSnippet={snippetToEdit}
+		onBack={viewManager.showSearchSnippets}
+		onSave={viewManager.showSearchSnippets}
+	/>
 {:else if currentView === 'import-snippets'}
 	<ImportSnippets onBack={viewManager.showCommandPalette} snippetsToImport={snippetsForImport} />
 {:else if currentView === 'file-search'}

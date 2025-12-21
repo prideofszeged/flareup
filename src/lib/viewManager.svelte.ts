@@ -7,6 +7,17 @@ import { extensionsStore } from './components/extensions/store.svelte';
 import { fetch } from '@tauri-apps/plugin-http';
 import { ExtensionSchema, type Extension } from '$lib/store';
 
+export type Snippet = {
+	id: number;
+	name: string;
+	keyword: string;
+	content: string;
+	createdAt: string;
+	updatedAt: string;
+	timesUsed: number;
+	lastUsedAt: string;
+};
+
 export type ViewState =
 	| 'command-palette'
 	| 'plugin-running'
@@ -30,6 +41,7 @@ type OauthState = {
 class ViewManager {
 	currentView = $state<ViewState>('command-palette');
 	quicklinkToEdit = $state<Quicklink | undefined>(undefined);
+	snippetToEdit = $state<Snippet | undefined>(undefined);
 	snippetsForImport = $state<any[] | null>(null);
 	commandToConfirm = $state<PluginInfo | null>(null);
 	pluginToSelectInSettings = $state<string | undefined>(undefined);
@@ -69,7 +81,8 @@ class ViewManager {
 		this.currentView = 'quicklink-form';
 	};
 
-	showCreateSnippetForm = () => {
+	showSnippetForm = (snippet?: Snippet) => {
+		this.snippetToEdit = snippet;
 		this.currentView = 'create-snippet-form';
 	};
 
@@ -101,7 +114,7 @@ class ViewManager {
 				this.showQuicklinkForm();
 				return;
 			case 'builtin:create-snippet':
-				this.showCreateSnippetForm();
+				this.showSnippetForm();
 				return;
 			case 'builtin:import-snippets':
 				this.showImportSnippets();

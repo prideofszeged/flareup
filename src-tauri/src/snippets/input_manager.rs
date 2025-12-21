@@ -14,6 +14,112 @@ use evdev::{uinput::VirtualDevice, KeyCode};
 #[cfg(target_os = "linux")]
 use xkbcommon::xkb;
 
+/// List of known terminal emulator WM_CLASS names (lowercase for comparison)
+const TERMINAL_CLASSES: &[&str] = &[
+    "gnome-terminal",
+    "konsole",
+    "xterm",
+    "urxvt",
+    "rxvt",
+    "terminator",
+    "tilix",
+    "alacritty",
+    "kitty",
+    "st",
+    "foot",
+    "wezterm",
+    "hyper",
+    "guake",
+    "yakuake",
+    "tilda",
+    "terminology",
+    "xfce4-terminal",
+    "lxterminal",
+    "mate-terminal",
+    "qterminal",
+    "sakura",
+    "termite",
+    "cool-retro-term",
+    "eterm",
+    "rio",
+    "warp",
+    "tabby",
+    "blackbox",
+    "contour",
+    "deepin-terminal",
+];
+
+/// Check if the currently focused X11 window is a terminal emulator
+#[cfg(target_os = "linux")]
+fn is_focused_window_terminal() -> bool {
+    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt, GetPropertyReply};
+
+    let result = (|| -> Option<bool> {
+        let (conn, _screen_num) = x11rb::connect(None).ok()?;
+
+        // Get the focused window
+        let focus = conn.get_input_focus().ok()?.reply().ok()?;
+        let mut window = focus.focus;
+
+        // If focus is on root or None, no terminal
+        if window == x11rb::NONE || window == 0 {
+            return Some(false);
+        }
+
+        // Get WM_CLASS atom
+        let wm_class_atom = conn
+            .intern_atom(false, b"WM_CLASS")
+            .ok()?
+            .reply()
+            .ok()?
+            .atom;
+
+        // Try to get WM_CLASS from the focused window, walking up the tree if needed
+        for _ in 0..10 {
+            if window == x11rb::NONE || window == 0 {
+                break;
+            }
+
+            let reply: GetPropertyReply = conn
+                .get_property(false, window, wm_class_atom, AtomEnum::STRING, 0, 1024)
+                .ok()?
+                .reply()
+                .ok()?;
+
+            if reply.value_len > 0 {
+                // WM_CLASS is two null-terminated strings: instance name and class name
+                let value = String::from_utf8_lossy(&reply.value).to_lowercase();
+                let parts: Vec<&str> = value.split('\0').collect();
+
+                for part in parts {
+                    let part = part.trim();
+                    if part.is_empty() {
+                        continue;
+                    }
+                    for terminal in TERMINAL_CLASSES {
+                        if part.contains(terminal) {
+                            return Some(true);
+                        }
+                    }
+                }
+                // Found WM_CLASS but it's not a terminal
+                return Some(false);
+            }
+
+            // Walk up to parent window
+            let tree = conn.query_tree(window).ok()?.reply().ok()?;
+            if tree.parent == tree.root || tree.parent == x11rb::NONE {
+                break;
+            }
+            window = tree.parent;
+        }
+
+        Some(false)
+    })();
+
+    result.unwrap_or(false)
+}
+
 #[derive(Debug, Clone)]
 pub enum InputEvent {
     KeyPress(char),
@@ -40,9 +146,9 @@ pub trait InputManager: Send + Sync {
     fn inject_key_clicks(&self, key: EnigoKey, count: usize) -> Result<()>;
 }
 
-fn with_clipboard_text<F>(text: &str, paste_action: F) -> Result<()>
+fn with_clipboard_text<F>(text: &str, is_terminal: bool, paste_action: F) -> Result<()>
 where
-    F: FnOnce() -> Result<()>,
+    F: FnOnce(bool) -> Result<()>,
 {
     const CLIPBOARD_PASTE_DELAY: Duration = Duration::from_millis(5);
     let _guard = InternalClipboardGuard::new();
@@ -55,7 +161,7 @@ where
         .context("Failed to set clipboard text")?;
     thread::sleep(CLIPBOARD_PASTE_DELAY);
 
-    let paste_result = paste_action();
+    let paste_result = paste_action(is_terminal);
 
     thread::sleep(CLIPBOARD_PASTE_DELAY);
 
@@ -119,10 +225,19 @@ impl InputManager for RdevInputManager {
             return self.inject_key_clicks(EnigoKey::Backspace, text.len());
         }
 
-        with_clipboard_text(text, || {
+        let is_terminal = is_focused_window_terminal();
+
+        with_clipboard_text(text, is_terminal, |is_terminal| {
             let mut enigo = self.enigo.lock().unwrap();
             enigo.key(EnigoKey::Control, enigo::Direction::Press)?;
+            if is_terminal {
+                // Terminals use Ctrl+Shift+V for paste
+                enigo.key(EnigoKey::Shift, enigo::Direction::Press)?;
+            }
             enigo.key(EnigoKey::Unicode('v'), enigo::Direction::Click)?;
+            if is_terminal {
+                enigo.key(EnigoKey::Shift, enigo::Direction::Release)?;
+            }
             enigo.key(EnigoKey::Control, enigo::Direction::Release)?;
             Ok(())
         })
@@ -401,7 +516,9 @@ impl InputManager for EvdevInputManager {
             return self.inject_key_clicks(EnigoKey::Backspace, text.len());
         }
 
-        with_clipboard_text(text, || {
+        let is_terminal = is_focused_window_terminal();
+
+        with_clipboard_text(text, is_terminal, |is_terminal| {
             let mut device = self.virtual_device.lock().unwrap();
             let syn = evdev::InputEvent::new(
                 evdev::EventType::SYNCHRONIZATION.0,
@@ -409,11 +526,31 @@ impl InputManager for EvdevInputManager {
                 0,
             );
 
+            // Press Ctrl
             device.emit(&[
                 evdev::InputEvent::new(evdev::EventType::KEY.0, KeyCode::KEY_LEFTCTRL.0, 1),
                 syn.clone(),
             ])?;
+
+            // For terminals, also press Shift (Ctrl+Shift+V)
+            if is_terminal {
+                device.emit(&[
+                    evdev::InputEvent::new(evdev::EventType::KEY.0, KeyCode::KEY_LEFTSHIFT.0, 1),
+                    syn.clone(),
+                ])?;
+            }
+
             self.send_key_click(&mut device, KeyCode::KEY_V)?;
+
+            // Release Shift if pressed
+            if is_terminal {
+                device.emit(&[
+                    evdev::InputEvent::new(evdev::EventType::KEY.0, KeyCode::KEY_LEFTSHIFT.0, 0),
+                    syn.clone(),
+                ])?;
+            }
+
+            // Release Ctrl
             device.emit(&[
                 evdev::InputEvent::new(evdev::EventType::KEY.0, KeyCode::KEY_LEFTCTRL.0, 0),
                 syn,
