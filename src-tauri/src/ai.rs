@@ -23,6 +23,15 @@ const AI_USAGE_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS ai_generations (
     total_cost REAL NOT NULL
 )";
 
+const AI_CONVERSATIONS_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS ai_conversations (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    model TEXT,
+    messages TEXT NOT NULL
+)";
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AskOptions {
@@ -42,6 +51,24 @@ pub struct StreamChunk {
 pub struct StreamEnd {
     request_id: String,
     full_text: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Message {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Conversation {
+    pub id: String,
+    pub title: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub model: Option<String>,
+    pub messages: Vec<Message>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -293,6 +320,7 @@ impl AiUsageManager {
     pub fn new(app_handle: &AppHandle) -> Result<Self, AppError> {
         let store = Store::new(app_handle, "ai_usage.sqlite")?;
         store.init_table(AI_USAGE_SCHEMA)?;
+        store.init_table(AI_CONVERSATIONS_SCHEMA)?;
         Ok(Self { store })
     }
 
@@ -403,6 +431,151 @@ pub async fn get_ollama_models(base_url: String) -> Result<Vec<String>, String> 
     }
 
     Ok(model_ids)
+}
+
+// Conversation Management Commands
+
+#[tauri::command]
+pub fn create_conversation(
+    app_handle: AppHandle,
+    title: String,
+    model: Option<String>,
+) -> Result<Conversation, String> {
+    let usage_manager = app_handle.state::<AiUsageManager>();
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().timestamp();
+
+    let conversation = Conversation {
+        id: id.clone(),
+        title,
+        created_at: now,
+        updated_at: now,
+        model,
+        messages: Vec::new(),
+    };
+
+    let messages_json = serde_json::to_string(&conversation.messages).map_err(|e| e.to_string())?;
+
+    usage_manager.store.execute(
+        "INSERT INTO ai_conversations (id, title, created_at, updated_at, model, messages) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            conversation.id,
+            conversation.title,
+            conversation.created_at,
+            conversation.updated_at,
+            conversation.model,
+            messages_json
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(conversation)
+}
+
+#[tauri::command]
+pub fn list_conversations(app_handle: AppHandle) -> Result<Vec<Conversation>, String> {
+    let usage_manager = app_handle.state::<AiUsageManager>();
+
+    let conn = usage_manager.store.conn();
+    let mut stmt = conn
+        .prepare("SELECT id, title, created_at, updated_at, model, messages FROM ai_conversations ORDER BY updated_at DESC")
+        .map_err(|e| e.to_string())?;
+
+    let conversations = stmt
+        .query_map([], |row| {
+            let messages_json: String = row.get(5)?;
+            let messages: Vec<Message> =
+                serde_json::from_str(&messages_json).unwrap_or_else(|_| Vec::new());
+
+            Ok(Conversation {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                created_at: row.get(2)?,
+                updated_at: row.get(3)?,
+                model: row.get(4)?,
+                messages,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(conversations)
+}
+
+#[tauri::command]
+pub fn get_conversation(app_handle: AppHandle, id: String) -> Result<Option<Conversation>, String> {
+    let usage_manager = app_handle.state::<AiUsageManager>();
+
+    let conn = usage_manager.store.conn();
+    let mut stmt = conn
+        .prepare("SELECT id, title, created_at, updated_at, model, messages FROM ai_conversations WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let result = stmt.query_row([id], |row| {
+        let messages_json: String = row.get(5)?;
+        let messages: Vec<Message> =
+            serde_json::from_str(&messages_json).unwrap_or_else(|_| Vec::new());
+
+        Ok(Conversation {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            created_at: row.get(2)?,
+            updated_at: row.get(3)?,
+            model: row.get(4)?,
+            messages,
+        })
+    });
+
+    match result {
+        Ok(conv) => Ok(Some(conv)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn update_conversation(
+    app_handle: AppHandle,
+    id: String,
+    title: Option<String>,
+    messages: Option<Vec<Message>>,
+) -> Result<(), String> {
+    let usage_manager = app_handle.state::<AiUsageManager>();
+    let now = chrono::Utc::now().timestamp();
+
+    if let Some(msgs) = messages {
+        let messages_json = serde_json::to_string(&msgs).map_err(|e| e.to_string())?;
+        usage_manager
+            .store
+            .execute(
+                "UPDATE ai_conversations SET messages = ?1, updated_at = ?2 WHERE id = ?3",
+                params![messages_json, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    if let Some(t) = title {
+        usage_manager
+            .store
+            .execute(
+                "UPDATE ai_conversations SET title = ?1, updated_at = ?2 WHERE id = ?3",
+                params![t, now, id],
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_conversation(app_handle: AppHandle, id: String) -> Result<(), String> {
+    let usage_manager = app_handle.state::<AiUsageManager>();
+
+    usage_manager
+        .store
+        .execute("DELETE FROM ai_conversations WHERE id = ?1", params![id])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

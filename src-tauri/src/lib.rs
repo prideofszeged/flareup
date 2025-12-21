@@ -597,7 +597,12 @@ pub fn run() {
             github_search_repos,
             github_list_repos,
             github_get_repo,
-            ai::get_ollama_models
+            ai::get_ollama_models,
+            ai::create_conversation,
+            ai::list_conversations,
+            ai::get_conversation,
+            ai::update_conversation,
+            ai::delete_conversation
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

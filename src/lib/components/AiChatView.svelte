@@ -2,7 +2,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen } from '@tauri-apps/api/event';
 	import { tick, onMount } from 'svelte';
-	import { Loader2, Send, Stars } from '@lucide/svelte';
+	import { Loader2, Send, Stars, MessageSquare, Plus } from '@lucide/svelte';
 	import { focusManager } from '$lib/focus.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
 	import HeaderInput from './HeaderInput.svelte';
@@ -11,6 +11,7 @@
 	import ActionBar from './nodes/shared/ActionBar.svelte';
 	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
 	import SvelteMarked from 'svelte-marked';
+	import { Button } from './ui/button';
 
 	type Props = {
 		onBack: () => void;
@@ -21,11 +22,23 @@
 		content: string;
 	};
 
+	type Conversation = {
+		id: string;
+		title: string;
+		createdAt: number;
+		updatedAt: number;
+		model?: string;
+		messages: Message[];
+	};
+
 	let { onBack }: Props = $props();
 
+	let currentConversationId = $state<string | null>(null);
+	let conversations = $state<Conversation[]>([]);
 	let messages = $state<Message[]>([]);
 	let prompt = $state('');
 	let isGenerating = $state(false);
+	let showSidebar = $state(true);
 	let searchInputEl: HTMLInputElement | null = $state(null);
 	let scrollContainer: HTMLElement | null = $state(null);
 
@@ -78,7 +91,35 @@
 		}
 	}
 
+	async function loadConversations() {
+		try {
+			conversations = await invoke<Conversation[]>('list_conversations');
+		} catch (error) {
+			console.error('Failed to load conversations:', error);
+		}
+	}
+
+	async function loadConversation(id: string) {
+		try {
+			const conversation = await invoke<Conversation | null>('get_conversation', { id });
+			if (conversation) {
+				currentConversationId = conversation.id;
+				messages = conversation.messages;
+			}
+		} catch (error) {
+			console.error('Failed to load conversation:', error);
+		}
+	}
+
+	function newChat() {
+		messages = [];
+		currentConversationId = null;
+		searchInputEl?.focus();
+	}
+
 	onMount(() => {
+		loadConversations();
+
 		const unlistenChunk = listen<{ request_id: string; text: string }>(
 			'ai-stream-chunk',
 			(event) => {
@@ -87,9 +128,16 @@
 			}
 		);
 
-		const unlistenEnd = listen<{ request_id: string; full_text: string }>('ai-stream-end', () => {
-			isGenerating = false;
-		});
+		const unlistenEnd = listen<{ request_id: string; full_text: string }>(
+			'ai-stream-end',
+			async () => {
+				isGenerating = false;
+				// Auto-save after response completes
+				if (messages.length > 0) {
+					await saveConversation();
+				}
+			}
+		);
 
 		return () => {
 			unlistenChunk.then((f) => f());
@@ -102,6 +150,32 @@
 			e.preventDefault();
 			handleSubmit();
 		}
+	}
+
+	async function saveConversation() {
+		try {
+			if (!currentConversationId) {
+				// Create new conversation
+				const title = messages[0]?.content.slice(0, 50) || 'New Chat';
+				const conversation = await invoke<Conversation>('create_conversation', {
+					title,
+					model: null
+				});
+				currentConversationId = conversation.id;
+			}
+			// Update existing conversation
+			await invoke('update_conversation', {
+				id: currentConversationId,
+				title: null,
+				messages: messages
+			});
+		} catch (error) {
+			console.error('Failed to save conversation:', error);
+		}
+	}
+
+	function clearChat() {
+		newChat();
 	}
 </script>
 
@@ -174,6 +248,11 @@
 					handler: handleSubmit
 				},
 				{
+					title: 'New Chat',
+					shortcut: { key: 'n', modifiers: ['ctrl'] },
+					handler: newChat
+				},
+				{
 					title: 'Configure AI',
 					shortcut: { key: ',', modifiers: ['ctrl'] },
 					handler: () => viewManager.showSettings()
@@ -181,7 +260,7 @@
 				{
 					title: 'Clear Chat',
 					shortcut: { key: 'l', modifiers: ['ctrl'] },
-					handler: () => (messages = [])
+					handler: clearChat
 				}
 			]}
 			icon={starsSquareIcon}
