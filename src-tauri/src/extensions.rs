@@ -7,6 +7,8 @@ use tauri::Manager;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
+use crate::cli_substitutes;
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HeuristicViolation {
@@ -71,6 +73,31 @@ impl IncompatibilityHeuristic for MacOSPathHeuristic {
         }
         None
     }
+}
+
+/// Magic bytes for detecting Mach-O binaries (macOS executables)
+/// - MH_MAGIC (32-bit): 0xFEEDFACE
+/// - MH_CIGAM (32-bit, byte-swapped): 0xCEFAEDFE
+/// - MH_MAGIC_64 (64-bit): 0xFEEDFACF
+/// - MH_CIGAM_64 (64-bit, byte-swapped): 0xCFFAEDFE
+/// - FAT_MAGIC (universal binary): 0xCAFEBABE
+/// - FAT_CIGAM (universal, byte-swapped): 0xBEBAFECA
+const MACH_O_MAGIC_BYTES: &[[u8; 4]] = &[
+    [0xFE, 0xED, 0xFA, 0xCE], // MH_MAGIC
+    [0xCE, 0xFA, 0xED, 0xFE], // MH_CIGAM
+    [0xFE, 0xED, 0xFA, 0xCF], // MH_MAGIC_64
+    [0xCF, 0xFA, 0xED, 0xFE], // MH_CIGAM_64
+    [0xCA, 0xFE, 0xBA, 0xBE], // FAT_MAGIC (universal binary)
+    [0xBE, 0xBA, 0xFE, 0xCA], // FAT_CIGAM
+];
+
+/// Check if the first 4 bytes of data indicate a Mach-O binary
+fn is_macho_binary(data: &[u8]) -> bool {
+    if data.len() < 4 {
+        return false;
+    }
+    let header: [u8; 4] = [data[0], data[1], data[2], data[3]];
+    MACH_O_MAGIC_BYTES.contains(&header)
 }
 
 fn get_extension_dir(app: &tauri::AppHandle, slug: &str) -> Result<PathBuf, String> {
@@ -172,9 +199,7 @@ fn get_commands_from_package_json(
             };
 
             Some(CommandToCheck {
-                path_in_archive: command_file_path_in_archive
-                    .to_string_lossy()
-                    .into_owned(),
+                path_in_archive: command_file_path_in_archive.to_string_lossy().into_owned(),
                 command_name: command_name.to_string(),
                 command_title,
             })
@@ -182,21 +207,86 @@ fn get_commands_from_package_json(
         .collect())
 }
 
-fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<Vec<HeuristicViolation>, String> {
+/// Result from heuristic checks, including detected Mach-O binaries for substitution
+struct HeuristicResult {
+    violations: Vec<HeuristicViolation>,
+    macho_binaries: Vec<String>,
+}
+
+fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<HeuristicResult, String> {
     let heuristics: Vec<Box<dyn IncompatibilityHeuristic + Send + Sync>> =
         vec![Box::new(AppleScriptHeuristic), Box::new(MacOSPathHeuristic)];
-    if heuristics.is_empty() {
-        return Ok(vec![]);
-    }
 
     let mut archive =
         ZipArchive::new(Cursor::new(archive_data.clone())).map_err(|e| e.to_string())?;
     let file_names: Vec<PathBuf> = archive.file_names().map(PathBuf::from).collect();
     let prefix = find_common_prefix(&file_names);
 
-    let commands_to_check = get_commands_from_package_json(&mut archive, &prefix)?;
     let mut violations = Vec::new();
 
+    // Check for Mach-O binaries in assets folder
+    let mut macho_binaries_found: Vec<String> = Vec::new();
+    for i in 0..archive.len() {
+        if let Ok(mut file) = archive.by_index(i) {
+            let file_path = file.name().to_string();
+
+            // Skip directories and common non-binary files
+            if file.is_dir()
+                || file_path.ends_with(".js")
+                || file_path.ends_with(".json")
+                || file_path.ends_with(".md")
+                || file_path.ends_with(".txt")
+                || file_path.ends_with(".png")
+                || file_path.ends_with(".svg")
+                || file_path.ends_with(".jpg")
+                || file_path.ends_with(".gif")
+                || file_path.ends_with(".css")
+                || file_path.ends_with(".html")
+            {
+                continue;
+            }
+
+            // Read first 4 bytes to check for Mach-O magic
+            let mut header = [0u8; 4];
+            if file.read_exact(&mut header).is_ok() && is_macho_binary(&header) {
+                // Get just the filename for the warning message
+                let binary_name = Path::new(&file_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&file_path)
+                    .to_string();
+                macho_binaries_found.push(binary_name);
+            }
+        }
+    }
+
+    // Add a single violation for all Mach-O binaries found
+    if !macho_binaries_found.is_empty() {
+        let binary_list = if macho_binaries_found.len() <= 3 {
+            macho_binaries_found.join(", ")
+        } else {
+            format!(
+                "{} and {} more",
+                macho_binaries_found[..3].join(", "),
+                macho_binaries_found.len() - 3
+            )
+        };
+        violations.push(HeuristicViolation {
+            command_name: "_extension".to_string(),
+            command_title: "Extension Assets".to_string(),
+            reason: format!(
+                "Contains macOS-only binary files that won't work on Linux: {}",
+                binary_list
+            ),
+        });
+    }
+
+    // Re-open archive for command checks (since we consumed it above)
+    let mut archive =
+        ZipArchive::new(Cursor::new(archive_data.clone())).map_err(|e| e.to_string())?;
+
+    // Check command source files for incompatibility patterns
+    let commands_to_check = get_commands_from_package_json(&mut archive, &prefix)?;
     for command_meta in commands_to_check {
         if let Ok(mut command_file) = archive.by_name(&command_meta.path_in_archive) {
             let mut content = String::new();
@@ -213,7 +303,10 @@ fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<Vec<HeuristicViol
             }
         }
     }
-    Ok(violations)
+    Ok(HeuristicResult {
+        violations,
+        macho_binaries: macho_binaries_found,
+    })
 }
 
 const COMPATIBILITY_FILE_NAME: &str = "compatibility.json";
@@ -501,15 +594,38 @@ pub async fn install_extension(
     let extension_dir = get_extension_dir(&app, &slug)?;
     let content = download_archive(&download_url).await?;
 
-    let violations = run_heuristic_checks(&content)?;
-    if !violations.is_empty() && !force {
+    let heuristic_result = run_heuristic_checks(&content)?;
+    if !heuristic_result.violations.is_empty() && !force {
         return Ok(InstallResult::RequiresConfirmation {
-            violations: violations.clone(),
+            violations: heuristic_result.violations.clone(),
         });
     }
 
     extract_archive(&content, &extension_dir)?;
-    save_compatibility_metadata(&extension_dir, &violations)?;
+
+    // Attempt to substitute macOS binaries with Linux equivalents
+    if !heuristic_result.macho_binaries.is_empty() {
+        match cli_substitutes::substitute_macos_binaries(
+            &extension_dir,
+            &heuristic_result.macho_binaries,
+        )
+        .await
+        {
+            Ok(substituted) => {
+                if !substituted.is_empty() {
+                    eprintln!(
+                        "✅ Successfully substituted {} macOS binaries with Linux versions",
+                        substituted.len()
+                    );
+                }
+            }
+            Err(e) => {
+                eprintln!("⚠️ Failed to substitute some binaries: {}", e);
+            }
+        }
+    }
+
+    save_compatibility_metadata(&extension_dir, &heuristic_result.violations)?;
 
     Ok(InstallResult::Success)
 }

@@ -210,6 +210,13 @@ class SidecarService {
 			return;
 		}
 
+		if (typedMessage.type === 'close-main-window') {
+			const { getCurrentWindow } = await import('@tauri-apps/api/window');
+			const window = getCurrentWindow();
+			await window.hide();
+			return;
+		}
+
 		if (typedMessage.type === 'invoke_command') {
 			const { requestId, command, params } = typedMessage.payload;
 			const responseType = `invoke_command-response`;

@@ -91,7 +91,7 @@ const sysInfo = await getSystemInfo();
 
 1. **Complex AppleScript**: Only common patterns are supported. Complex scripts with conditionals, loops, or custom handlers will not work.
 
-2. **Native Binaries**: Extensions that bundle macOS-specific binaries cannot be shimmed.
+2. **Native Binaries**: Extensions that bundle macOS-specific binaries (Mach-O format) cannot be shimmed. Flareup will detect these at install time and warn you.
 
 3. **System-Specific Features**: Some macOS features have no Linux equivalent (e.g., specific Finder operations, macOS-only system preferences).
 
@@ -105,8 +105,9 @@ const sysInfo = await getSystemInfo();
 
 When installing extensions, Flareup runs heuristic checks to detect potential incompatibilities:
 
-1. **AppleScript Detection**: Warns if `runAppleScript` is used
-2. **Path Detection**: Warns if hardcoded macOS paths are found
+1. **Mach-O Binary Detection**: Warns if macOS-only executable files are found in the extension
+2. **AppleScript Detection**: Warns if `runAppleScript` is used
+3. **Path Detection**: Warns if hardcoded macOS paths are found
 
 Users are prompted to confirm installation if potential issues are detected.
 

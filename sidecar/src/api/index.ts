@@ -32,7 +32,7 @@ import * as OAuth from './oauth';
 import { AI } from './ai';
 import { Keyboard } from './keyboard';
 import { currentPluginName, currentPluginPreferences } from '../state';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { writeOutput } from '../io';
 
 const Image = {
 	Mask: {
@@ -83,9 +83,11 @@ export const getRaycastApi = () => {
 		trash,
 		runAppleScript,
 		closeMainWindow: async () => {
-			// Hide the main window (equivalent to closing in Raycast)
-			const window = getCurrentWindow();
-			await window.hide();
+			// Send message to frontend to hide the main window
+			writeOutput({
+				type: 'close-main-window',
+				payload: {}
+			});
 		},
 		popToRoot: async () => {
 			// Navigate back to plugin list - extensions handle this themselves
