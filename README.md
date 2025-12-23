@@ -120,6 +120,13 @@ If you prefer to build the project from its source code, you'll need to set up t
     pnpm tauri dev
     ```
 
+## 📊 Project Status & Development
+
+For detailed project status, roadmap, and development priorities, see:
+- **[ROADMAP.md](ROADMAP.md)** - Comprehensive project status and development roadmap (~70% Raycast parity)
+- **[BUILDING.md](BUILDING.md)** - Build instructions and system setup
+- **[docs/EXTENSION_COMPATIBILITY.md](docs/EXTENSION_COMPATIBILITY.md)** - Extension compatibility layer documentation
+
 ## 🙏 Acknowledgements
 
 This project stands on the shoulders of giants:
