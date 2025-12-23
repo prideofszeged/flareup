@@ -167,8 +167,15 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
 
 pub async fn run_server(app_handle: AppHandle) {
     let addr = "127.0.0.1:7265";
-    let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
-    println!("WebSocket server listening on ws://{}", addr);
+    let listener = match TcpListener::bind(&addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("Failed to bind browser extension port {}: {}", addr, e);
+            tracing::warn!("Browser extension WebSocket server will not be available");
+            return;
+        }
+    };
+    tracing::info!("WebSocket server listening on ws://{}", addr);
 
     while let Ok((stream, _)) = listener.accept().await {
         tokio::spawn(handle_connection(stream, app_handle.clone()));

@@ -2,64 +2,52 @@
 **Date:** 2025-12-22
 **Reviewer:** Claude Opus 4.5
 **Focus:** Extensions compatibility, Downloads Manager, overall gaps
+**Last Updated:** 2025-12-22 (post-fixes review)
 
 ---
 
 ## Executive Summary
 
-Flare is approximately **60% feature-complete** compared to Raycast. The main pain points are:
+Flare is approximately **70% feature-complete** compared to Raycast (up from 60% after recent fixes).
 
-1. **Extensions**: Many fail due to stub implementations and missing APIs
+### ✅ Recently Fixed (This Branch)
+- React Reconciler stubs now work (no more crashes)
+- `usePersistentState` actually persists data
+- Database indices added for performance
+- N+1 query fixed in file indexer
+- TcpListener port crash fixed
+- Structured logging via tracing
+- CPU monitor runs in background thread
+
+### Remaining Pain Points
+1. **Extensions**: AppleScript shims still limited, some APIs missing
 2. **Downloads Manager**: Does not exist
 3. **System Integration**: Window management, system commands, per-command hotkeys missing
-4. **Code Quality**: Unsafe `.unwrap()` calls can crash the app
+4. **Code Quality**: Some unsafe `.unwrap()` calls remain
 
 ---
 
 ## 1. Extensions: Why Many Don't Work
 
-### 1.1 Critical: React Reconciler Stubs
+### 1.1 ~~Critical: React Reconciler Stubs~~ ✅ FIXED
 
 **Location:** `sidecar/src/hostConfig.ts:383-412`
 
-10 React Reconciler methods throw "Function not implemented" errors instead of being no-ops:
+~~10 React Reconciler methods throw "Function not implemented" errors instead of being no-ops.~~
 
-```typescript
-resetFormInstance: function (): void {
-    throw new Error('Function not implemented.');  // CRASHES extension
-},
-requestPostPaintCallback: function (): void {
-    throw new Error('Function not implemented.');
-},
-shouldAttemptEagerTransition: function (): boolean {
-    throw new Error('Function not implemented.');
-},
-// ... 7 more methods
-```
-
-**Impact:** Extensions using concurrent React features, forms, or suspense will crash.
-
-**Fix:** Replace with no-op implementations that return safe defaults.
+**Status:** All 10 methods now return safe no-op values (void, false, null, Date.now()).
 
 ---
 
-### 1.2 Critical: usePersistentState is Fake
+### 1.2 ~~Critical: usePersistentState is Fake~~ ✅ FIXED
 
-**Location:** `sidecar/src/api/index.ts:97-103`
+**Location:** `sidecar/src/api/index.ts:97-139`
 
-```typescript
-usePersistentState: <T>(
-    key: string,
-    initialValue: T
-): [T, React.Dispatch<React.SetStateAction<T>>, boolean] => {
-    const [state, setState] = React.useState(initialValue);
-    return [state, setState, false];  // Never persists! Always resets!
-},
-```
-
-**Impact:** Extensions expecting state to persist between runs lose all data.
-
-**Fix:** Implement actual persistence using LocalStorage API or backend storage.
+**Status:** Now properly persists to LocalStorage with:
+- `useEffect` to load on mount
+- `isLoading` state for async load tracking
+- `useCallback` memoized setter that persists on every change
+- Proper JSON parse/stringify with error handling
 
 ---
 
@@ -201,26 +189,11 @@ The file indexer watches `~/Downloads` (`src-tauri/src/file_search/indexer.rs:20
 
 **Fix:** Replace with `?` operator or `match` statements.
 
-#### TcpListener Port Binding
+#### ~~TcpListener Port Binding~~ ✅ FIXED
 
 **Location:** `src-tauri/src/browser_extension.rs:170`
 
-```rust
-let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
-```
-
-If port 7265 is already in use, the entire application crashes.
-
-**Fix:**
-```rust
-let listener = match TcpListener::bind(&addr).await {
-    Ok(l) => l,
-    Err(e) => {
-        tracing::error!("Failed to bind browser extension port: {}", e);
-        return;
-    }
-};
-```
+**Status:** Now uses proper `match` with `tracing::error!` and graceful return instead of crashing.
 
 ---
 
@@ -245,55 +218,54 @@ No TODO comments found in Rust code.
 
 ## 5. Performance Issues
 
-### 5.1 N+1 Query in File Indexer
+### 5.1 ~~N+1 Query in File Indexer~~ ✅ FIXED
 
 **Location:** `src-tauri/src/file_search/indexer.rs`
 
-The indexer queries the database for each file's timestamp individually instead of batch querying.
+**Status:** Fixed in commit `55a7bd0`. Now uses batch query with HashMap lookup.
 
-**Fix:** Add `get_all_file_timestamps()` returning `HashMap<PathBuf, i64>`.
+### 5.2 ~~Missing Database Indices~~ ✅ FIXED
 
-### 5.2 Missing Database Indices
-
-**Required indices (from TODO.md):**
-
-```sql
--- ai.rs
-CREATE INDEX IF NOT EXISTS idx_ai_generations_created ON ai_generations(created);
-CREATE INDEX IF NOT EXISTS idx_ai_conversations_updated ON ai_conversations(updated_at);
-
--- clipboard_history
-CREATE INDEX IF NOT EXISTS idx_clipboard_content_type ON clipboard_history(content_type);
-CREATE INDEX IF NOT EXISTS idx_clipboard_pinned ON clipboard_history(is_pinned);
-CREATE INDEX IF NOT EXISTS idx_clipboard_last_copied ON clipboard_history(last_copied_at);
-
--- snippets
-CREATE INDEX IF NOT EXISTS idx_snippets_keyword ON snippets(keyword);
-```
+**Status:** All 6 indices added in commit `55a7bd0`:
+- `idx_ai_generations_created`
+- `idx_ai_conversations_updated`
+- `idx_clipboard_content_type`
+- `idx_clipboard_pinned`
+- `idx_clipboard_last_copied`
+- `idx_snippets_keyword`
 
 ---
 
 ## 6. Recommended Action Plan
 
-### Quick Wins (< 1 day each)
+### ✅ Completed Quick Wins
+
+| # | Task | Status | Source |
+|---|------|--------|--------|
+| 1 | Fix React Reconciler stubs (no-op, don't throw) | ✅ Done | Current branch |
+| 2 | Implement `usePersistentState` properly | ✅ Done | Current branch |
+| 3 | Add database indices | ✅ Done | Commit `55a7bd0` |
+| 4 | Fix TcpListener crash on port conflict | ✅ Done | Current branch |
+| 5 | N+1 query fix in file indexer | ✅ Done | Commit `55a7bd0` |
+| 6 | Replace println!/eprintln! with tracing | ✅ Done | Commit `8ff7426` |
+| 7 | CPU monitor background thread | ✅ Done | Commit `8ff7426` |
+| 8 | Remove debug console.log statements | ✅ Done | Commit `55a7bd0` |
+
+### Remaining Quick Wins
 
 | # | Task | Effort | Impact |
 |---|------|--------|--------|
-| 1 | Fix React Reconciler stubs (no-op, don't throw) | 1 hour | High |
-| 2 | Implement `usePersistentState` properly | 2 hours | High |
-| 3 | Add database indices | 30 min | Medium |
-| 4 | Fix TcpListener crash on port conflict | 30 min | Medium |
-| 5 | Add more AppleScript shims (open URL, clipboard) | 4 hours | Medium |
+| 1 | Add more AppleScript shims (open URL, do shell script) | 4 hours | Medium |
+| 2 | Replace remaining `.unwrap()` with safe handling | 1 day | High |
 
 ### Medium Term (1-2 weeks)
 
 | # | Task | Effort | Impact |
 |---|------|--------|--------|
-| 6 | Replace all `.unwrap()` with safe handling | 1 day | High |
-| 7 | Create Downloads Manager module | 2 days | Medium |
-| 8 | Window management (X11) | 1 week | High |
-| 9 | System commands | 2 days | High |
-| 10 | Per-command global hotkeys | 1 week | High |
+| 3 | Create Downloads Manager module | 2 days | Medium |
+| 4 | Window management (X11) | 1 week | High |
+| 5 | System commands (shutdown/lock/sleep) | 2 days | High |
+| 6 | Per-command global hotkeys | 1 week | High |
 
 ### Long Term (1+ months)
 
@@ -321,14 +293,27 @@ CREATE INDEX IF NOT EXISTS idx_snippets_keyword ON snippets(keyword);
 
 ## 8. Conclusion
 
-Flare has a solid foundation but needs work in three areas:
+Flare has made significant progress. **8 of the original quick wins are now complete.**
 
-1. **Extension Compatibility**: Quick fixes to `usePersistentState` and React Reconciler stubs would immediately improve compatibility
-2. **Feature Gaps**: Downloads Manager, Window Management, and System Commands are the biggest missing features
-3. **Stability**: Replace `.unwrap()` calls to prevent crashes
+### What's Working Well Now
+- ✅ Extension React rendering (reconciler fixed)
+- ✅ Extension state persistence (usePersistentState fixed)
+- ✅ Database performance (indices + N+1 fix)
+- ✅ Logging infrastructure (tracing)
+- ✅ System monitoring (background CPU thread)
+- ✅ Stability (TcpListener crash fixed)
 
-The estimated time to reach 90% Raycast parity is **2-3 months** of focused development.
+### Remaining Focus Areas
+1. **Extension Compatibility**: Expand AppleScript shims, add missing APIs
+2. **Feature Gaps**: Downloads Manager, Window Management, System Commands
+3. **Code Quality**: ~30 remaining `.unwrap()` calls need safe handling
+
+### Estimated Timeline
+- **Current State:** ~70% Raycast feature parity (up from 60%)
+- **To 90% parity:** 6-8 weeks of focused development
+- **Key blockers:** Window management (X11/Wayland complexity)
 
 ---
 
 *This review supplements the existing TODO.md with specific technical findings.*
+*Updated after fixes on 2025-12-22.*
