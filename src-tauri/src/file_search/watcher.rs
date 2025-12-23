@@ -83,18 +83,18 @@ async fn handle_event(app_handle: AppHandle, debounced_event: DebouncedEvent) {
                 last_modified,
             };
             if let Err(e) = manager.add_file(&indexed_file) {
-                eprintln!(
-                    "Failed to add/update file in index: {:?}, path: {}",
-                    e,
-                    path.display()
+                tracing::error!(
+                    error = ?e,
+                    path = %path.display(),
+                    "Failed to add/update file in index"
                 );
             }
         }
     } else if let Err(e) = manager.remove_file(&path.to_string_lossy()) {
-        eprintln!(
-            "Failed to remove file from index: {:?}, path: {}",
-            e,
-            path.display()
+        tracing::error!(
+            error = ?e,
+            path = %path.display(),
+            "Failed to remove file from index"
         );
     }
 }
@@ -116,7 +116,7 @@ pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {
                 }
                 Err(errors) => {
                     for error in errors {
-                        eprintln!("watch error: {:?}", error);
+                        tracing::error!(error = ?error, "File watch error");
                     }
                 }
             }
@@ -127,7 +127,7 @@ pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {
     // Watch only specific common directories instead of entire home
     let watch_dirs = [
         "Documents",
-        "Downloads", 
+        "Downloads",
         "Desktop",
         "Pictures",
         "Videos",
@@ -146,7 +146,7 @@ pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {
                 .watcher()
                 .watch(&dir_path, RecursiveMode::Recursive)
             {
-                eprintln!("Failed to watch {}: {:?}", dir_path.display(), e);
+                tracing::error!(error = ?e, path = %dir_path.display(), "Failed to watch directory");
             } else {
                 debouncer
                     .cache()
@@ -157,9 +157,9 @@ pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {
     }
 
     if watch_count == 0 {
-        eprintln!("Warning: No directories are being watched for file search");
+        tracing::warn!("No directories are being watched for file search");
     } else {
-        println!("✅ Watching {} directories for file changes", watch_count);
+        tracing::info!(count = watch_count, "Watching directories for file changes");
     }
 
     app_handle.manage(debouncer);

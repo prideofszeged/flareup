@@ -97,7 +97,7 @@ pub fn paste_snippet_content(app: AppHandle, content: String) -> Result<(), Stri
 
     std::thread::spawn(move || {
         if let Err(e) = input_manager.inject_text(&content_to_paste) {
-            eprintln!("Failed to inject snippet content: {}", e);
+            tracing::error!(error = %e, "Failed to inject snippet content");
         }
 
         if chars_to_move_left > 0 {
@@ -105,7 +105,7 @@ pub fn paste_snippet_content(app: AppHandle, content: String) -> Result<(), Stri
             if let Err(e) =
                 input_manager.inject_key_clicks(enigo::Key::LeftArrow, chars_to_move_left)
             {
-                eprintln!("Failed to inject cursor movement: {}", e);
+                tracing::error!(error = %e, "Failed to inject cursor movement");
             }
         }
     });

@@ -38,7 +38,7 @@ pub fn start_monitoring(_app_handle: AppHandle) {
                                 content_value,
                                 None,
                             ) {
-                                eprintln!("Error adding clipboard text item: {:?}", e);
+                                tracing::error!(error = ?e, "Error adding clipboard text item");
                             }
                         }
                         last_text_hash = current_hash;
@@ -67,10 +67,10 @@ pub fn start_monitoring(_app_handle: AppHandle) {
                                     content_value,
                                     None,
                                 ) {
-                                    eprintln!("Error adding clipboard image item: {:?}", e);
+                                    tracing::error!(error = ?e, "Error adding clipboard image item");
                                 }
                             }
-                            Err(e) => eprintln!("Failed to save image: {:?}", e),
+                            Err(e) => tracing::error!(error = ?e, "Failed to save image"),
                         }
                     }
                     last_image_hash = current_hash;

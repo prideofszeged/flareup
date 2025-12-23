@@ -727,7 +727,7 @@ pub async fn ai_ask_stream(
             let handle_clone = app_handle.clone();
             tokio::spawn(async move {
                 if let Err(e) = fetch_and_log_usage(or_req_id, api_key, handle_clone).await {
-                    eprintln!("[AI Usage Tracking] Error: {}", e);
+                    tracing::error!(error = %e, "AI usage tracking failed");
                 }
             });
         }

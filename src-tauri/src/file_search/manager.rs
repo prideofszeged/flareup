@@ -98,6 +98,36 @@ impl FileSearchManager {
         Ok(())
     }
 
+    /// Batch add files in a single transaction for much better performance
+    pub fn batch_add_files(&self, files: &[IndexedFile]) -> Result<(), AppError> {
+        if files.is_empty() {
+            return Ok(());
+        }
+
+        let mut db = self.db.lock().unwrap();
+        let tx = db.transaction()?;
+
+        {
+            let mut stmt = tx.prepare(
+                "INSERT OR REPLACE INTO file_index (path, name, parent_path, file_type, last_modified)
+                 VALUES (?1, ?2, ?3, ?4, ?5)"
+            )?;
+
+            for file in files {
+                stmt.execute(params![
+                    file.path,
+                    file.name,
+                    file.parent_path,
+                    file.file_type,
+                    file.last_modified
+                ])?;
+            }
+        }
+
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn remove_file(&self, path: &str) -> Result<(), AppError> {
         let db = self.db.lock().unwrap();
         db.execute("DELETE FROM file_index WHERE path = ?1", params![path])?;

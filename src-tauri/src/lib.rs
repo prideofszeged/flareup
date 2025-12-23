@@ -42,7 +42,7 @@ fn get_installed_apps(app: tauri::AppHandle) -> Vec<App> {
     match AppCache::get_apps(&app) {
         Ok(apps) => apps,
         Err(e) => {
-            eprintln!("Failed to get apps: {:?}", e);
+            tracing::error!(error = ?e, "Failed to get installed apps");
             Vec::new()
         }
     }
@@ -169,27 +169,26 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     let spotlight_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::ALT), Code::Space);
 
     // Register the shortcut handler
-    println!("[Hotkey] Registering global shortcut: Super+Alt+Space");
+    tracing::info!("Registering global shortcut: Super+Alt+Space");
     app.global_shortcut()
         .on_shortcut(spotlight_shortcut, move |app, shortcut, event| {
-            // Log ALL events for debugging
-            println!(
-                "[Hotkey] Event received: shortcut={:?}, state={:?}",
-                shortcut,
-                event.state()
+            tracing::debug!(
+                shortcut = ?shortcut,
+                state = ?event.state(),
+                "Hotkey event received"
             );
 
             if event.state() == ShortcutState::Pressed {
-                println!("[Hotkey] Processing PRESSED event");
+                tracing::debug!("Processing hotkey PRESSED event");
 
                 if let Some(window) = app.get_webview_window("main") {
                     match window.is_visible() {
                         Ok(true) => {
-                            println!("[Hotkey] Window is visible, hiding...");
+                            tracing::debug!("Window visible, hiding");
                             let _ = window.hide();
                         }
                         Ok(false) => {
-                            println!("[Hotkey] Window is hidden, showing...");
+                            tracing::debug!("Window hidden, showing");
                             let _ = window.show();
                             // Small delay to ensure window is fully visible before focusing
                             let window_clone = window.clone();
@@ -199,19 +198,19 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
                             });
                         }
                         Err(e) => {
-                            eprintln!("[Hotkey] Error checking window visibility: {}", e);
+                            tracing::error!(error = %e, "Failed to check window visibility");
                         }
                     }
                 } else {
-                    eprintln!("[Hotkey] Main window not found!");
+                    tracing::error!("Main window not found");
                 }
             } else {
-                println!("[Hotkey] Ignoring RELEASED event");
+                tracing::trace!("Ignoring hotkey RELEASED event");
             }
         })?;
 
     app.global_shortcut().register(spotlight_shortcut)?;
-    println!("[Hotkey] Global shortcut registered successfully");
+    tracing::info!("Global shortcut registered successfully");
 
     Ok(())
 }
@@ -223,10 +222,10 @@ fn setup_input_listener(app: &tauri::AppHandle) {
     let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
 
     let input_manager_result: Result<Arc<dyn InputManager>, anyhow::Error> = if is_wayland {
-        println!("[Snippets] Wayland detected, using evdev for snippet expansion.");
+        tracing::info!("Wayland detected, using evdev for snippet expansion");
         EvdevInputManager::new().map(|m| Arc::new(m) as Arc<dyn InputManager>)
     } else {
-        println!("[Snippets] X11 or unknown session, using rdev for snippet expansion.");
+        tracing::info!("X11 or unknown session, using rdev for snippet expansion");
         RdevInputManager::new().map(|m| Arc::new(m) as Arc<dyn InputManager>)
     };
 
@@ -237,14 +236,14 @@ fn setup_input_listener(app: &tauri::AppHandle) {
             let engine = ExpansionEngine::new(snippet_manager_arc, input_manager);
             thread::spawn(move || {
                 if let Err(e) = engine.start_listening() {
-                    eprintln!("[ExpansionEngine] Failed to start: {}", e);
+                    tracing::error!(error = %e, "Expansion engine failed to start");
                 }
             });
         }
         Err(e) => {
-            eprintln!(
-                "[Snippets] Failed to initialize input manager: {}. Snippet expansion will be disabled.",
-                e
+            tracing::error!(
+                error = %e,
+                "Failed to initialize input manager, snippet expansion will be disabled"
             );
         }
     }
@@ -480,6 +479,14 @@ async fn github_get_repo(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize tracing subscriber for structured logging
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into()),
+        )
+        .init();
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())
@@ -619,7 +626,7 @@ pub fn run() {
 
             setup_background_refresh(app.handle().clone());
             if let Err(e) = setup_global_shortcut(app) {
-                eprintln!("Failed to set up global shortcut: {}", e);
+                tracing::error!(error = %e, "Failed to set up global shortcut");
             }
             setup_input_listener(app.handle());
 

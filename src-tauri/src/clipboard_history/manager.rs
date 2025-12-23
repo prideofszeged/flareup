@@ -273,7 +273,7 @@ pub fn init(app_handle: AppHandle) {
                 drop(manager_guard);
                 start_monitoring(app_handle);
             }
-            Err(e) => eprintln!("Failed to create ClipboardHistoryManager: {:?}", e),
+            Err(e) => tracing::error!(error = ?e, "Failed to create ClipboardHistoryManager"),
         }
     }
 }
