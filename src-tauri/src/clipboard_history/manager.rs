@@ -70,6 +70,20 @@ impl ClipboardHistoryManager {
         let store = Store::new(app_handle, "clipboard_history.sqlite")?;
         store.init_table(CLIPBOARD_SCHEMA)?;
 
+        // Add indices for performance
+        store.conn().execute(
+            "CREATE INDEX IF NOT EXISTS idx_clipboard_content_type ON clipboard_history(content_type)",
+            [],
+        )?;
+        store.conn().execute(
+            "CREATE INDEX IF NOT EXISTS idx_clipboard_pinned ON clipboard_history(is_pinned)",
+            [],
+        )?;
+        store.conn().execute(
+            "CREATE INDEX IF NOT EXISTS idx_clipboard_last_copied ON clipboard_history(last_copied_at)",
+            [],
+        )?;
+
         let key = get_encryption_key()?;
 
         Ok(Self {

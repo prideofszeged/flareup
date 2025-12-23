@@ -62,6 +62,12 @@ impl SnippetManager {
                     [],
                 )?;
             }
+
+            // Add index for faster keyword lookups
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_snippets_keyword ON snippets(keyword)",
+                [],
+            )?;
         }
 
         Ok(Self {

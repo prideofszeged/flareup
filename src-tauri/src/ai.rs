@@ -321,6 +321,17 @@ impl AiUsageManager {
         let store = Store::new(app_handle, "ai_usage.sqlite")?;
         store.init_table(AI_USAGE_SCHEMA)?;
         store.init_table(AI_CONVERSATIONS_SCHEMA)?;
+
+        // Add indices for performance
+        store.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ai_generations_created ON ai_generations(created)",
+            params![],
+        )?;
+        store.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ai_conversations_updated ON ai_conversations(updated_at)",
+            params![],
+        )?;
+
         Ok(Self { store })
     }
 

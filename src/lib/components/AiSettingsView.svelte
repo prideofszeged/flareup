@@ -140,7 +140,6 @@
 			type="single"
 			value={aiProvider}
 			onValueChange={(v) => {
-				console.log('AI Provider changed to:', v);
 				aiProvider = v as 'openRouter' | 'ollama';
 			}}
 		>

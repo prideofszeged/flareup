@@ -117,6 +117,26 @@ impl FileSearchManager {
         Ok(last_modified?)
     }
 
+    /// Get all file timestamps in a single query to avoid N+1 problem during indexing
+    pub fn get_all_file_timestamps(
+        &self,
+    ) -> Result<std::collections::HashMap<String, i64>, AppError> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = db.prepare("SELECT path, last_modified FROM file_index")?;
+
+        let timestamps_iter = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })?;
+
+        let mut timestamps = std::collections::HashMap::new();
+        for result in timestamps_iter {
+            let (path, last_modified) = result?;
+            timestamps.insert(path, last_modified);
+        }
+
+        Ok(timestamps)
+    }
+
     pub fn search_files(&self, term: &str, limit: u32) -> Result<Vec<IndexedFile>, AppError> {
         let db = self.db.lock().unwrap();
         let mut stmt = db.prepare(

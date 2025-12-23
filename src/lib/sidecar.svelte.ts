@@ -47,7 +47,6 @@ class SidecarService {
 			const args: string[] = [];
 			args.push(`--data-dir=${await appLocalDataDir()}`);
 			args.push(`--cache-dir=${await appCacheDir()}`);
-			console.log(args);
 			const command = Command.sidecar('binaries/app', args.length > 0 ? args : undefined, {
 				encoding: 'raw'
 			});
@@ -92,7 +91,6 @@ class SidecarService {
 	#setupAiEventListeners = async () => {
 		try {
 			const chunkUnlisten = await listen('ai-stream-chunk', (event) => {
-				console.log(event.payload);
 				this.dispatchEvent('ai-stream-chunk', event.payload as object);
 			});
 
@@ -177,9 +175,6 @@ class SidecarService {
 
 		const typedMessage = result.data;
 		this.messageParsingTimes.push(Date.now() - typedMessage.timestamp);
-		console.log(
-			`Rolling average: ${this.messageParsingTimes.reduce((a, b) => a + b, 0) / this.messageParsingTimes.length}ms`
-		);
 
 		if (typedMessage.type === 'log') {
 			this.#log(`SIDECAR: ${typedMessage.payload}`);
@@ -342,7 +337,6 @@ class SidecarService {
 	};
 
 	#log = (message: string) => {
-		console.log(`[SidecarService] ${message}`);
 		this.logs.push(message);
 	};
 

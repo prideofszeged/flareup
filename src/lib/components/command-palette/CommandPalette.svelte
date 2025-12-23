@@ -92,7 +92,6 @@
 		if (item?.type === 'quicklink' && item.data.link.includes('{argument}')) {
 			selectedQuicklinkForArgument = item.data;
 		} else {
-			console.log('null haha');
 			selectedQuicklinkForArgument = null;
 		}
 	});

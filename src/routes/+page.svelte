@@ -171,7 +171,6 @@
 			});
 
 		const unlisten = listen<string>('deep-link', (event) => {
-			console.log('Received deep link:', event.payload);
 			viewManager.handleDeepLink(event.payload, allPlugins);
 		});
 
