@@ -100,6 +100,12 @@ class ViewManager {
 	};
 
 	runPlugin = async (plugin: PluginInfo) => {
+		console.log('[DEBUG] runPlugin called with:', {
+			title: plugin.title,
+			pluginPath: plugin.pluginPath,
+			commandName: plugin.commandName
+		});
+
 		switch (plugin.pluginPath) {
 			case 'builtin:store':
 				this.showExtensions();
@@ -124,6 +130,50 @@ class ViewManager {
 				return;
 			case 'builtin:ai-chat':
 				this.showAiChat();
+				return;
+			// System commands
+			case 'builtin:lock-screen':
+				console.log('[DEBUG] Executing lock screen command');
+				try {
+					await invoke('execute_power_command', { command: 'lock' });
+					console.log('[DEBUG] Lock screen command completed');
+				} catch (error) {
+					console.error('[ERROR] Lock screen failed:', error);
+				}
+				return;
+			case 'builtin:sleep':
+				await invoke('execute_power_command', { command: 'sleep' });
+				return;
+			case 'builtin:shutdown':
+				// Show confirmation dialog
+				const shutdownConfirm = confirm('Are you sure you want to shut down your computer?');
+				if (shutdownConfirm) {
+					await invoke('execute_power_command', { command: 'shutdown' });
+				}
+				return;
+			case 'builtin:restart':
+				// Show confirmation dialog
+				const restartConfirm = confirm('Are you sure you want to restart your computer?');
+				if (restartConfirm) {
+					await invoke('execute_power_command', { command: 'restart' });
+				}
+				return;
+			case 'builtin:volume-up':
+				await invoke('volume_up');
+				return;
+			case 'builtin:volume-down':
+				await invoke('volume_down');
+				return;
+			case 'builtin:toggle-mute':
+				await invoke('toggle_mute');
+				return;
+			case 'builtin:empty-trash':
+				// Show confirmation dialog
+				const trashConfirm = confirm('Are you sure you want to permanently delete all items in trash?');
+				if (trashConfirm) {
+					const count = await invoke<number>('empty_trash');
+					await invoke('show_hud', { title: `Removed ${count} items from trash` });
+				}
 				return;
 		}
 

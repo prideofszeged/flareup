@@ -21,6 +21,7 @@ mod snippets;
 mod soulver;
 mod store;
 mod system;
+mod system_commands;
 mod system_monitors;
 
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
@@ -616,7 +617,15 @@ pub fn run() {
             ai::list_conversations,
             ai::get_conversation,
             ai::update_conversation,
-            ai::delete_conversation
+            ai::delete_conversation,
+            system_commands::execute_power_command,
+            system_commands::set_volume,
+            system_commands::volume_up,
+            system_commands::volume_down,
+            system_commands::toggle_mute,
+            system_commands::get_volume,
+            system_commands::empty_trash,
+            system_commands::eject_drive
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

@@ -134,6 +134,111 @@
 		owner: 'flare'
 	};
 
+	// System Commands
+	const lockScreenPlugin: PluginInfo = {
+		title: 'Lock Screen',
+		description: 'Lock your screen',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'lock-screen',
+		pluginPath: 'builtin:lock-screen',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const sleepPlugin: PluginInfo = {
+		title: 'Sleep',
+		description: 'Put your computer to sleep',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'sleep',
+		pluginPath: 'builtin:sleep',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const shutdownPlugin: PluginInfo = {
+		title: 'Shut Down',
+		description: 'Shut down your computer',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'shutdown',
+		pluginPath: 'builtin:shutdown',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const restartPlugin: PluginInfo = {
+		title: 'Restart',
+		description: 'Restart your computer',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'restart',
+		pluginPath: 'builtin:restart',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const volumeUpPlugin: PluginInfo = {
+		title: 'Volume Up',
+		description: 'Increase system volume',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'volume-up',
+		pluginPath: 'builtin:volume-up',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const volumeDownPlugin: PluginInfo = {
+		title: 'Volume Down',
+		description: 'Decrease system volume',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'volume-down',
+		pluginPath: 'builtin:volume-down',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const toggleMutePlugin: PluginInfo = {
+		title: 'Toggle Mute',
+		description: 'Mute or unmute system audio',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'toggle-mute',
+		pluginPath: 'builtin:toggle-mute',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const emptyTrashPlugin: PluginInfo = {
+		title: 'Empty Trash',
+		description: 'Permanently delete all items in trash',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		commandName: 'empty-trash',
+		pluginPath: 'builtin:empty-trash',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
 	const { pluginList, currentPreferences } = $derived(uiStore);
 	const allPlugins = $derived([
 		...pluginList,
@@ -144,7 +249,16 @@
 		createSnippetPlugin,
 		importSnippetsPlugin,
 		fileSearchPlugin,
-		aiChatPlugin
+		aiChatPlugin,
+		// System commands
+		lockScreenPlugin,
+		sleepPlugin,
+		shutdownPlugin,
+		restartPlugin,
+		volumeUpPlugin,
+		volumeDownPlugin,
+		toggleMutePlugin,
+		emptyTrashPlugin
 	]);
 
 	const {
