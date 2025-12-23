@@ -28,6 +28,7 @@
 	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
 	import { invoke } from '@tauri-apps/api/core';
 	import AiChatView from '$lib/components/AiChatView.svelte';
+	import DmenuView from '$lib/components/DmenuView.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -157,8 +158,35 @@
 	} = $derived(viewManager);
 
 	let showLogViewer = $state(false);
+	let dmenuMode = $state(false);
 
 	onMount(() => {
+		// Listen for dmenu mode activation FIRST (before any other init)
+		const unlistenDmenu = listen('dmenu-mode', () => {
+			dmenuMode = true;
+		});
+
+		// If we're in dmenu mode, skip normal app initialization
+		// The dmenu event may have already been emitted, so we need to query for it
+		invoke('dmenu_get_items')
+			.then((items: unknown) => {
+				// If this succeeds, we're in dmenu mode
+				if (Array.isArray(items) && items.length >= 0) {
+					dmenuMode = true;
+				}
+			})
+			.catch(() => {
+				// Not in dmenu mode - proceed with normal initialization
+				initNormalMode();
+			});
+
+		return () => {
+			sidecarService.stop();
+			unlistenDmenu.then((fn) => fn());
+		};
+	});
+
+	function initNormalMode() {
 		sidecarService.setOnGoBackToPluginList(viewManager.showCommandPalette);
 		sidecarService.start();
 
@@ -170,15 +198,10 @@
 				console.error('Failed to discover plugins:', e);
 			});
 
-		const unlisten = listen<string>('deep-link', (event) => {
+		listen<string>('deep-link', (event) => {
 			viewManager.handleDeepLink(event.payload, allPlugins);
 		});
-
-		return () => {
-			sidecarService.stop();
-			unlisten.then((fn) => fn());
-		};
-	});
+	}
 
 	$effect(() => {
 		viewManager.oauthState = sidecarService.oauthState;
@@ -265,7 +288,9 @@
 	/>
 {/if}
 
-{#if currentView === 'command-palette'}
+{#if dmenuMode}
+	<DmenuView />
+{:else if currentView === 'command-palette'}
 	<CommandPalette plugins={allPlugins} onRunPlugin={viewManager.runPlugin} />
 {:else if currentView === 'settings'}
 	<SettingsView

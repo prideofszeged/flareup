@@ -6,6 +6,7 @@ mod cli_substitutes;
 mod clipboard;
 pub mod clipboard_history;
 mod desktop;
+pub mod dmenu;
 mod error;
 mod extension_shims;
 mod extensions;
@@ -32,10 +33,15 @@ use selection::get_text;
 use snippets::engine::ExpansionEngine;
 use snippets::manager::SnippetManager;
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
+
+use dmenu::DmenuSession;
+
+// Global state for dmenu session (only used in dmenu mode)
+static DMENU_SESSION: Mutex<Option<DmenuSession>> = Mutex::new(None);
 
 #[tauri::command]
 fn get_installed_apps(app: tauri::AppHandle) -> Vec<App> {
@@ -660,6 +666,115 @@ pub fn run() {
                             }
                         }
                     }
+                    _ => {}
+                }
+            }
+        }
+    });
+}
+
+// ============================================================================
+// dmenu Mode
+// ============================================================================
+
+#[tauri::command]
+fn dmenu_get_items() -> Vec<String> {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.items.clone())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+fn dmenu_get_prompt() -> String {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.prompt.clone())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+fn dmenu_get_case_insensitive() -> bool {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.case_insensitive)
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn dmenu_select_item(item: String) {
+    if let Some(session) = DMENU_SESSION.lock().unwrap().as_ref() {
+        session.output_selection(&item);
+    }
+    std::process::exit(0);
+}
+
+#[tauri::command]
+fn dmenu_cancel() {
+    std::process::exit(1);
+}
+
+/// Entry point for dmenu mode - runs a minimal Tauri app for menu selection
+pub fn run_dmenu(session: DmenuSession) {
+    // Initialize tracing subscriber for structured logging
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into()),
+        )
+        .init();
+
+    // Store the session in global state
+    *DMENU_SESSION.lock().unwrap() = Some(session);
+
+    tracing::info!("Starting Flare in dmenu mode");
+
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![
+            dmenu_get_items,
+            dmenu_get_prompt,
+            dmenu_get_case_insensitive,
+            dmenu_select_item,
+            dmenu_cancel
+        ])
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+
+                // Delay the event emission to ensure WebView is ready
+                let window_clone = window.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    let _ = window_clone.emit("dmenu-mode", ());
+                });
+            } else {
+                tracing::error!("dmenu: main window not found");
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error building dmenu app");
+
+    app.run(|_app, event| {
+        if let tauri::RunEvent::WindowEvent { label, event, .. } = event {
+            if label == "main" {
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        // Cancel on window close
+                        std::process::exit(1);
+                    }
+                    // Don't exit on focus loss - let the user press Escape to cancel
+                    // This was causing immediate exit on window show
                     _ => {}
                 }
             }
