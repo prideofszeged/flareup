@@ -642,7 +642,10 @@ pub fn run() {
             downloads::downloads_show_in_folder,
             downloads::downloads_delete_item,
             downloads::downloads_delete_file,
-            downloads::downloads_clear_history
+            downloads::downloads_clear_history,
+            extensions::get_extension_compatibility,
+            extensions::get_all_extensions_compatibility,
+            extensions::uninstall_extension
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

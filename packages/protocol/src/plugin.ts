@@ -21,7 +21,8 @@ export const PluginInfoSchema = z.object({
 	mode: z.enum(['view', 'no-view', 'menu-bar']).optional(),
 	author: z.union([z.string(), z.object({ name: z.string() })]).optional(),
 	owner: z.string().optional(),
-	compatibilityWarnings: z.array(CompatibilityWarningSchema).optional()
+	compatibilityWarnings: z.array(CompatibilityWarningSchema).optional(),
+	compatibilityScore: z.number().int().min(0).max(100).optional()
 });
 export type PluginInfo = z.infer<typeof PluginInfoSchema>;
 
