@@ -183,42 +183,80 @@
 <svelte:window on:keydown={handleKeyDown} />
 
 <div class="hotkeys-settings">
-	<div class="header">
-		<button class="back-button" on:click={onBack}>← Back</button>
-		<h1>Hotkey Configuration</h1>
-		<button class="reset-button" on:click={resetToDefaults}>Reset to Defaults</button>
+	<div class="mb-8 flex items-center justify-between gap-5">
+		<button
+			class="bg-secondary hover:bg-secondary/80 border-border text-foreground rounded-md border px-4 py-2 text-sm transition-colors"
+			on:click={onBack}
+		>
+			← Back
+		</button>
+		<h1 class="text-foreground flex-1 text-2xl font-semibold">
+			Hotkey Configuration
+			<span class="text-muted-foreground ml-2 text-xs font-normal">v1.0.1</span>
+		</h1>
+		<button
+			class="bg-secondary hover:bg-secondary/80 border-border text-foreground rounded-md border px-4 py-2 text-sm transition-colors"
+			on:click={resetToDefaults}
+		>
+			Reset to Defaults
+		</button>
 	</div>
 
 	<div class="hotkey-list">
 		{#each plugins as plugin}
 			{@const hotkey = getHotkey(plugin.pluginPath)}
-			<div class="hotkey-row">
-				<div class="command-info">
-					<div class="command-title">{plugin.title}</div>
-					<div class="command-desc">{plugin.description}</div>
-					<div class="command-path">{plugin.pluginPath}</div>
+			<div
+				class="bg-background border-border hover:border-muted-foreground flex items-center justify-between rounded-lg border p-4 transition-all hover:shadow-md"
+			>
+				<div class="min-w-0 flex-1">
+					<div class="text-foreground mb-1 text-base font-medium">{plugin.title}</div>
+					<div class="text-muted-foreground mb-1 text-sm">{plugin.description}</div>
+					<div class="text-muted-foreground font-mono text-xs opacity-70">{plugin.pluginPath}</div>
 				</div>
 
-				<div class="hotkey-input">
+				<div class="ml-4 flex min-w-[200px] justify-end">
 					{#if recordingFor === plugin.pluginPath}
-						<div class="recording-box">
-							<div class="recording-display">{formatCurrentRecording()}</div>
-							<div class="recording-buttons">
-								<button class="save-btn" on:click={saveHotkey} disabled={!pressedKey}>
+						<div
+							class="bg-accent border-primary flex min-w-[250px] flex-col gap-2 rounded-md border-2 p-3"
+						>
+							<div
+								class="bg-background border-border flex h-10 items-center justify-center rounded border px-2 font-mono text-sm font-medium"
+							>
+								{formatCurrentRecording()}
+							</div>
+							<div class="flex gap-2">
+								<button
+									class="hover:bg-primary/90 bg-primary flex-1 rounded border border-green-600 px-3 py-1.5 text-sm text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+									on:click={saveHotkey}
+									disabled={!pressedKey}
+								>
 									Save
 								</button>
-								<button class="cancel-btn" on:click={cancelRecording}>Cancel</button>
+								<button
+									class="bg-secondary hover:bg-secondary/80 border-border flex-1 rounded border px-3 py-1.5 text-sm transition-colors"
+									on:click={cancelRecording}
+								>
+									Cancel
+								</button>
 							</div>
 						</div>
 					{:else if hotkey}
-						<div class="hotkey-display">
-							<span class="hotkey-text">{hotkey.hotkey}</span>
-							<button class="remove-btn" on:click={() => removeHotkey(plugin.pluginPath)}>
+						<div
+							class="bg-secondary border-border flex items-center gap-2 rounded-md border px-3 py-2"
+						>
+							<span class="font-mono text-sm font-medium">{hotkey.hotkey}</span>
+							<button
+								class="hover:text-destructive text-muted-foreground text-xl leading-none transition-colors"
+								on:click={() => removeHotkey(plugin.pluginPath)}
+							>
 								×
 							</button>
 						</div>
 					{:else}
-						<button class="set-btn" on:click={() => startRecording(plugin.pluginPath)}>
+						<button
+							class="hover:bg-primary border-primary hover:text-primary-foreground rounded-md border bg-transparent px-4 py-2 text-sm transition-all"
+							on:click={() => startRecording(plugin.pluginPath)}
+						>
 							Set Hotkey
 						</button>
 					{/if}
@@ -239,200 +277,10 @@
 		margin: 0 auto;
 	}
 
-	.header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 30px;
-		gap: 20px;
-	}
-
-	.header h1 {
-		flex: 1;
-		margin: 0;
-		font-size: 24px;
-		font-weight: 600;
-	}
-
-	.back-button,
-	.reset-button {
-		padding: 8px 16px;
-		border-radius: 6px;
-		border: 1px solid var(--border-color, #ddd);
-		background: var(--bg-secondary, #f5f5f5);
-		cursor: pointer;
-		font-size: 14px;
-		transition: all 0.2s;
-	}
-
-	.back-button:hover,
-	.reset-button:hover {
-		background: var(--bg-hover, #e0e0e0);
-	}
-
 	.hotkey-list {
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-	}
-
-	.hotkey-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 16px;
-		border-radius: 8px;
-		border: 1px solid var(--border-color, #ddd);
-		background: var(--bg-card, white);
-		transition: all 0.2s;
-	}
-
-	.hotkey-row:hover {
-		border-color: var(--border-hover, #999);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	}
-
-	.command-info {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.command-title {
-		font-size: 16px;
-		font-weight: 500;
-		margin-bottom: 4px;
-	}
-
-	.command-desc {
-		font-size: 13px;
-		color: var(--text-secondary, #666);
-		margin-bottom: 4px;
-	}
-
-	.command-path {
-		font-size: 11px;
-		color: var(--text-tertiary, #999);
-		font-family: monospace;
-	}
-
-	.hotkey-input {
-		min-width: 200px;
-		display: flex;
-		justify-content: flex-end;
-	}
-
-	.hotkey-display {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 12px;
-		border-radius: 6px;
-		background: var(--bg-secondary, #f5f5f5);
-		border: 1px solid var(--border-color, #ddd);
-	}
-
-	.hotkey-text {
-		font-family: monospace;
-		font-size: 14px;
-		font-weight: 500;
-	}
-
-	.remove-btn {
-		padding: 2px 8px;
-		border: none;
-		background: transparent;
-		cursor: pointer;
-		font-size: 20px;
-		line-height: 1;
-		color: var(--text-secondary, #666);
-		transition: color 0.2s;
-	}
-
-	.remove-btn:hover {
-		color: var(--danger, #d32f2f);
-	}
-
-	.set-btn {
-		padding: 8px 16px;
-		border-radius: 6px;
-		border: 1px solid var(--primary, #007aff);
-		background: transparent;
-		color: var(--primary, #007aff);
-		cursor: pointer;
-		font-size: 14px;
-		transition: all 0.2s;
-	}
-
-	.set-btn:hover {
-		background: var(--primary, #007aff);
-		color: white;
-	}
-
-	.recording-box {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		padding: 12px;
-		border-radius: 6px;
-		background: var(--bg-highlight, #fff9e6);
-		border: 2px solid var(--primary, #007aff);
-		min-width: 250px;
-	}
-
-	.recording-display {
-		font-family: monospace;
-		font-size: 14px;
-		font-weight: 500;
-		text-align: center;
-		padding: 8px;
-		border-radius: 4px;
-		background: white;
-		border: 1px solid var(--border-color, #ddd);
-		min-height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.recording-buttons {
-		display: flex;
-		gap: 8px;
-	}
-
-	.save-btn,
-	.cancel-btn {
-		flex: 1;
-		padding: 6px 12px;
-		border-radius: 4px;
-		border: 1px solid;
-		cursor: pointer;
-		font-size: 13px;
-		transition: all 0.2s;
-	}
-
-	.save-btn {
-		border-color: var(--success, #4caf50);
-		background: var(--success, #4caf50);
-		color: white;
-	}
-
-	.save-btn:hover:not(:disabled) {
-		background: var(--success-dark, #45a049);
-	}
-
-	.save-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.cancel-btn {
-		border-color: var(--border-color, #ddd);
-		background: var(--bg-secondary, #f5f5f5);
-		color: var(--text-primary, #333);
-	}
-
-	.cancel-btn:hover {
-		background: var(--bg-hover, #e0e0e0);
 	}
 
 	.warning-box {

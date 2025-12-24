@@ -148,6 +148,19 @@
 		owner: 'flare'
 	};
 
+	const settingsPlugin: PluginInfo = {
+		title: 'Flareup Settings',
+		description: 'Configure Flareup preferences and options',
+		pluginTitle: 'Flare',
+		pluginName: 'flare',
+		commandName: 'settings',
+		pluginPath: 'builtin:settings',
+		icon: storeCommandIcon, // reusing store icon for now
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
 	// System Commands
 	const lockScreenPlugin: PluginInfo = {
 		title: 'Lock Screen',
@@ -409,6 +422,7 @@
 		fileSearchPlugin,
 		aiChatPlugin,
 		downloadsPlugin,
+		settingsPlugin,
 		// System commands
 		lockScreenPlugin,
 		sleepPlugin,

@@ -19,6 +19,7 @@ mod integrations;
 mod oauth;
 mod quick_toggles;
 mod quicklinks;
+mod settings;
 mod snippets;
 mod soulver;
 mod store;
@@ -668,7 +669,10 @@ pub fn run() {
             downloads::downloads_clear_history,
             extensions::get_extension_compatibility,
             extensions::get_all_extensions_compatibility,
-            extensions::uninstall_extension
+            extensions::uninstall_extension,
+            settings::get_app_settings,
+            settings::save_app_settings,
+            settings::reset_app_settings
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -682,6 +686,7 @@ pub fn run() {
             app.manage(FrecencyManager::new(app.handle())?);
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
+            app.manage(settings::SettingsManager::new(app.handle())?);
 
             // Initialize hotkey manager
             let hotkey_manager = hotkey_manager::HotkeyManager::new(app.handle())?;

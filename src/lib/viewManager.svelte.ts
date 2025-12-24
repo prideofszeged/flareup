@@ -133,6 +133,9 @@ class ViewManager {
 			case 'builtin:downloads':
 				this.showDownloads();
 				return;
+			case 'builtin:settings':
+				this.showSettings();
+				return;
 			// System commands
 			case 'builtin:lock-screen':
 				try {
