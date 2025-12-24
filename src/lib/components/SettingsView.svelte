@@ -24,11 +24,24 @@
 
 	let activeTab = $state('general');
 
-	onMount(() => {
+	function applyTheme(theme: 'light' | 'dark' | 'system') {
+		const root = document.documentElement;
+
+		if (theme === 'system') {
+			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			root.classList.toggle('dark', prefersDark);
+		} else {
+			root.classList.toggle('dark', theme === 'dark');
+		}
+	}
+
+	onMount(async () => {
 		// Load settings on mount if not already loaded
 		if (!settingsStore.isLoaded()) {
-			settingsStore.loadSettings();
+			await settingsStore.loadSettings();
 		}
+		// Apply the current theme
+		applyTheme(settingsStore.settings.theme);
 	});
 
 	function handleKeydown(event: KeyboardEvent) {

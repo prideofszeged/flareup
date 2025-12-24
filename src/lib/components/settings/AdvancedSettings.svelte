@@ -5,6 +5,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
+	import { invoke } from '@tauri-apps/api/core';
 
 	const { settings } = $derived(settingsStore);
 
@@ -46,6 +47,17 @@
 		const value = parseInt((e.target as HTMLInputElement).value);
 		if (!isNaN(value) && value > 0) {
 			settingsStore.updateSetting('clipboardHistoryRetentionDays', value);
+		}
+	}
+
+	async function handleAutoStartChange(checked: boolean) {
+		try {
+			await invoke('set_auto_start_enabled', { enabled: checked });
+			settingsStore.updateSetting('autoStartOnLogin', checked);
+		} catch (error) {
+			console.error('Failed to set auto-start:', error);
+			// Revert the setting on error
+			settingsStore.updateSetting('autoStartOnLogin', !checked);
 		}
 	}
 </script>
@@ -165,8 +177,7 @@
 				{#snippet control()}
 					<Checkbox
 						checked={settings.autoStartOnLogin}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('autoStartOnLogin', checked === true)}
+						onCheckedChange={(checked) => handleAutoStartChange(checked === true)}
 					/>
 				{/snippet}
 			</SettingItem>

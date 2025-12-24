@@ -1,5 +1,6 @@
 mod ai;
 mod app;
+mod auto_start;
 mod browser_extension;
 mod cache;
 mod cli_substitutes;
@@ -672,7 +673,9 @@ pub fn run() {
             extensions::uninstall_extension,
             settings::get_app_settings,
             settings::save_app_settings,
-            settings::reset_app_settings
+            settings::reset_app_settings,
+            auto_start::set_auto_start_enabled,
+            auto_start::get_auto_start_enabled
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -748,9 +751,33 @@ pub fn run() {
                         }
                     }
                     tauri::WindowEvent::Focused(false) => {
+                        tracing::info!("Window lost focus");
                         if let Some(window) = app.get_webview_window("main") {
-                            if !cfg!(debug_assertions) {
-                                let _ = window.hide();
+                            // Check if close on blur is enabled in settings
+                            if let Some(settings_manager) =
+                                app.try_state::<settings::SettingsManager>()
+                            {
+                                match settings_manager.get_settings() {
+                                    Ok(settings) => {
+                                        tracing::info!(
+                                            "Close on blur setting: {}",
+                                            settings.close_on_blur
+                                        );
+                                        if settings.close_on_blur {
+                                            tracing::info!("Hiding window due to close on blur");
+                                            let _ = window.hide();
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Failed to get settings: {}", e);
+                                    }
+                                }
+                            } else {
+                                tracing::warn!("Settings manager not available");
+                                if !cfg!(debug_assertions) {
+                                    // Fallback: hide in release mode if settings not available
+                                    let _ = window.hide();
+                                }
                             }
                         }
                     }

@@ -8,9 +8,22 @@
 
 	const { settings } = $derived(settingsStore);
 
+	function applyTheme(theme: 'light' | 'dark' | 'system') {
+		const root = document.documentElement;
+
+		if (theme === 'system') {
+			// Check system preference
+			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			root.classList.toggle('dark', prefersDark);
+		} else {
+			root.classList.toggle('dark', theme === 'dark');
+		}
+	}
+
 	function handleThemeChange(value: string | undefined) {
 		if (value && (value === 'light' || value === 'dark' || value === 'system')) {
 			settingsStore.updateSetting('theme', value);
+			applyTheme(value);
 		}
 	}
 
