@@ -132,7 +132,10 @@ export function useCommandPaletteItems({
 			const frecency = frecencyMap.get(item.id);
 			let frecencyScore = 0;
 			if (frecency) {
-				const ageInHours = Math.max(1, (now - frecency.lastUsedAt) / 3600);
+				// Backend stores timestamp in nanoseconds, convert to seconds
+				const lastUsedSeconds = frecency.lastUsedAt / 1_000_000_000;
+				const nowSeconds = Date.now() / 1000;
+				const ageInHours = Math.max(1, (nowSeconds - lastUsedSeconds) / 3600);
 				frecencyScore = (frecency.useCount * 1000) / Math.pow(ageInHours + 2, gravity);
 			}
 			const textScore = item.fuseScore !== undefined ? 1 - item.fuseScore * 100 : 0;
