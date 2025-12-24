@@ -23,6 +23,7 @@ mod store;
 mod system;
 mod system_commands;
 mod system_monitors;
+mod window_management;
 
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
 use crate::{app::App, cache::AppCache};
@@ -625,7 +626,10 @@ pub fn run() {
             system_commands::toggle_mute,
             system_commands::get_volume,
             system_commands::empty_trash,
-            system_commands::eject_drive
+            system_commands::eject_drive,
+            window_management::snap_active_window,
+            window_management::get_available_monitors,
+            window_management::move_window_to_monitor
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

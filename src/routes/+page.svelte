@@ -233,7 +233,151 @@
 		pluginName: 'system',
 		commandName: 'empty-trash',
 		pluginPath: 'builtin:empty-trash',
-		icon: '', // TODO: Add icon
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	// Window Management
+	const snapLeftPlugin: PluginInfo = {
+		title: 'Snap Window Left Half',
+		description: 'Move window to left half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-left',
+		pluginPath: 'builtin:snap-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapRightPlugin: PluginInfo = {
+		title: 'Snap Window Right Half',
+		description: 'Move window to right half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-right',
+		pluginPath: 'builtin:snap-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopPlugin: PluginInfo = {
+		title: 'Snap Window Top Half',
+		description: 'Move window to top half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-top',
+		pluginPath: 'builtin:snap-top',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Half',
+		description: 'Move window to bottom half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-bottom',
+		pluginPath: 'builtin:snap-bottom',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopLeftPlugin: PluginInfo = {
+		title: 'Snap Window Top Left',
+		description: 'Move window to top left quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-top-left',
+		pluginPath: 'builtin:snap-top-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopRightPlugin: PluginInfo = {
+		title: 'Snap Window Top Right',
+		description: 'Move window to top right quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-top-right',
+		pluginPath: 'builtin:snap-top-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomLeftPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Left',
+		description: 'Move window to bottom left quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-bottom-left',
+		pluginPath: 'builtin:snap-bottom-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomRightPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Right',
+		description: 'Move window to bottom right quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'snap-bottom-right',
+		pluginPath: 'builtin:snap-bottom-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const centerWindowPlugin: PluginInfo = {
+		title: 'Center Window',
+		description: 'Center window on screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'center',
+		pluginPath: 'builtin:center-window',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const maximizeWindowPlugin: PluginInfo = {
+		title: 'Maximize Window',
+		description: 'Maximize window to full screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'maximize',
+		pluginPath: 'builtin:maximize-window',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const almostMaximizePlugin: PluginInfo = {
+		title: 'Almost Maximize Window',
+		description: 'Maximize window with padding',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		commandName: 'almost-maximize',
+		pluginPath: 'builtin:almost-maximize',
+		icon: '',
 		preferences: [],
 		mode: 'no-view',
 		owner: 'flare'
@@ -258,7 +402,19 @@
 		volumeUpPlugin,
 		volumeDownPlugin,
 		toggleMutePlugin,
-		emptyTrashPlugin
+		emptyTrashPlugin,
+		// Window management
+		snapLeftPlugin,
+		snapRightPlugin,
+		snapTopPlugin,
+		snapBottomPlugin,
+		snapTopLeftPlugin,
+		snapTopRightPlugin,
+		snapBottomLeftPlugin,
+		snapBottomRightPlugin,
+		centerWindowPlugin,
+		maximizeWindowPlugin,
+		almostMaximizePlugin
 	]);
 
 	const {

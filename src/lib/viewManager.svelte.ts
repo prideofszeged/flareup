@@ -175,6 +175,40 @@ class ViewManager {
 					await invoke('show_hud', { title: `Removed ${count} items from trash` });
 				}
 				return;
+			// Window management
+			case 'builtin:snap-left':
+				await invoke('snap_active_window', { position: 'leftHalf' });
+				return;
+			case 'builtin:snap-right':
+				await invoke('snap_active_window', { position: 'rightHalf' });
+				return;
+			case 'builtin:snap-top':
+				await invoke('snap_active_window', { position: 'topHalf' });
+				return;
+			case 'builtin:snap-bottom':
+				await invoke('snap_active_window', { position: 'bottomHalf' });
+				return;
+			case 'builtin:snap-top-left':
+				await invoke('snap_active_window', { position: 'topLeftQuarter' });
+				return;
+			case 'builtin:snap-top-right':
+				await invoke('snap_active_window', { position: 'topRightQuarter' });
+				return;
+			case 'builtin:snap-bottom-left':
+				await invoke('snap_active_window', { position: 'bottomLeftQuarter' });
+				return;
+			case 'builtin:snap-bottom-right':
+				await invoke('snap_active_window', { position: 'bottomRightQuarter' });
+				return;
+			case 'builtin:center-window':
+				await invoke('snap_active_window', { position: 'center' });
+				return;
+			case 'builtin:maximize-window':
+				await invoke('snap_active_window', { position: 'maximize' });
+				return;
+			case 'builtin:almost-maximize':
+				await invoke('snap_active_window', { position: 'almostMaximize' });
+				return;
 		}
 
 		uiStore.setCurrentRunningPlugin(plugin);
