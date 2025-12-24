@@ -471,6 +471,20 @@
 		listen<string>('deep-link', (event) => {
 			viewManager.handleDeepLink(event.payload, allPlugins);
 		});
+
+		// Listen for hotkey-triggered commands
+		listen<string>('execute-command', (event) => {
+			const commandId = event.payload;
+			console.log('[Hotkey] Executing command:', commandId);
+
+			// Find the plugin for this command
+			const plugin = allPlugins.find((p) => p.pluginPath === commandId);
+			if (plugin) {
+				viewManager.runPlugin(plugin);
+			} else {
+				console.error('[Hotkey] Command not found:', commandId);
+			}
+		});
 	}
 
 	$effect(() => {

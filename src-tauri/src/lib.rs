@@ -13,6 +13,7 @@ mod extensions;
 mod file_search;
 mod filesystem;
 mod frecency;
+mod hotkey_manager;
 mod integrations;
 mod oauth;
 mod quick_toggles;
@@ -629,7 +630,12 @@ pub fn run() {
             system_commands::eject_drive,
             window_management::snap_active_window,
             window_management::get_available_monitors,
-            window_management::move_window_to_monitor
+            window_management::move_window_to_monitor,
+            hotkey_manager::get_hotkey_config,
+            hotkey_manager::set_command_hotkey,
+            hotkey_manager::remove_command_hotkey,
+            hotkey_manager::check_hotkey_conflict,
+            hotkey_manager::reset_hotkeys_to_defaults
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -642,6 +648,36 @@ pub fn run() {
             app.manage(FrecencyManager::new(app.handle())?);
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
+
+            // Initialize hotkey manager
+            let hotkey_manager = hotkey_manager::HotkeyManager::new(app.handle())?;
+
+            // Load and register saved hotkeys
+            if let Ok(saved_hotkeys) = hotkey_manager.get_all_hotkeys() {
+                tracing::info!("Loading {} saved hotkeys", saved_hotkeys.len());
+
+                for config in saved_hotkeys {
+                    if let Some(mods) = hotkey_manager::modifiers_from_bits(config.modifiers) {
+                        if let Some(code) = hotkey_manager::string_to_code(&config.key) {
+                            let shortcut =
+                                tauri_plugin_global_shortcut::Shortcut::new(Some(mods), code);
+                            if let Err(e) = hotkey_manager.register_shortcut(
+                                app.handle(),
+                                config.command_id.clone(),
+                                shortcut,
+                            ) {
+                                tracing::error!(
+                                    "Failed to register hotkey for {}: {}",
+                                    config.command_id,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            app.manage(hotkey_manager);
 
             setup_background_refresh(app.handle().clone());
             if let Err(e) = setup_global_shortcut(app) {

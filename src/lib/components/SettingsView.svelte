@@ -12,6 +12,7 @@
 	import PasswordInput from './PasswordInput.svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import AiSettingsView from './AiSettingsView.svelte';
+	import HotkeysSettings from './HotkeysSettings.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
 
 	type Props = {
@@ -191,10 +192,14 @@
 	<Tabs.Root bind:value={activeTab} class="h-full pt-2">
 		<Tabs.List class="mx-auto">
 			<Tabs.Trigger value="extensions">Extensions</Tabs.Trigger>
+			<Tabs.Trigger value="hotkeys">Hotkeys</Tabs.Trigger>
 			<Tabs.Trigger value="ai">AI</Tabs.Trigger>
 		</Tabs.List>
 		<Tabs.Content value="ai">
 			<AiSettingsView />
+		</Tabs.Content>
+		<Tabs.Content value="hotkeys" class="h-full">
+			<HotkeysSettings {plugins} {onBack} />
 		</Tabs.Content>
 		<Tabs.Content value="extensions" class="flex h-full">
 			<div class="flex w-80 flex-col border-r">
@@ -270,10 +275,8 @@
 						</div>
 						{#if selectedWarnings.length > 0}
 							<div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-								<p class="text-amber-200 font-medium">
-									Potential compatibility issues detected
-								</p>
-								<ul class="mt-2 space-y-1 text-xs text-foreground">
+								<p class="font-medium text-amber-200">Potential compatibility issues detected</p>
+								<ul class="text-foreground mt-2 space-y-1 text-xs">
 									{#each selectedWarnings.slice(0, 4) as warning}
 										<li>
 											<strong>{warning.commandTitle ?? warning.commandName}:</strong>
@@ -281,7 +284,9 @@
 										</li>
 									{/each}
 									{#if selectedWarnings.length > 4}
-										<li class="text-muted-foreground">... {selectedWarnings.length - 4} more warnings</li>
+										<li class="text-muted-foreground">
+											... {selectedWarnings.length - 4} more warnings
+										</li>
 									{/if}
 								</ul>
 							</div>
