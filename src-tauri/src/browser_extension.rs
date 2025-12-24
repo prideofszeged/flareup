@@ -9,6 +9,7 @@ use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Serialize, Deserialize)]
+#[allow(dead_code)]
 struct JsonRpcRequest {
     jsonrpc: String,
     method: String,
@@ -17,6 +18,7 @@ struct JsonRpcRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(dead_code)]
 struct JsonRpcResponse {
     jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -27,6 +29,7 @@ struct JsonRpcResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(dead_code)]
 struct JsonRpcError {
     code: i32,
     message: String,

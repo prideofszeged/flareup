@@ -15,6 +15,7 @@ pub struct ShimResult {
 
 /// Enhanced AppleScript command types for better parsing and execution
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum AppleScriptCommand {
     DoShellScript {
         command: String,
@@ -60,6 +61,7 @@ pub enum AppleScriptCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum AppCommand {
     Activate,
     Quit,

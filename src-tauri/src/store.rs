@@ -37,7 +37,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn conn(&self) -> MutexGuard<Connection> {
+    pub fn conn(&self) -> MutexGuard<'_, Connection> {
         self.db.lock().expect("store db mutex poisoned")
     }
 

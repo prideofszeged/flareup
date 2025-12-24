@@ -209,6 +209,7 @@ impl HotkeyManager {
     }
 
     /// Get the command ID for a registered shortcut
+    #[allow(dead_code)]
     pub fn get_command_for_shortcut(&self, shortcut: &Shortcut) -> Option<String> {
         let registered = self
             .registered
@@ -246,6 +247,7 @@ pub fn modifiers_from_bits(bits: u8) -> Option<Modifiers> {
 }
 
 /// Convert Tauri Modifiers to bitmask
+#[allow(dead_code)]
 pub fn modifiers_to_bits(mods: Modifiers) -> u8 {
     let mut bits = 0u8;
 

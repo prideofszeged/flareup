@@ -134,6 +134,7 @@ impl FileSearchManager {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_file_last_modified(&self, path: &str) -> Result<Option<i64>, AppError> {
         let db = self.db.lock().expect("file search db mutex poisoned");
         let last_modified: Result<Option<i64>, rusqlite::Error> = db
