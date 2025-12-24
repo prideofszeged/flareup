@@ -29,6 +29,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import AiChatView from '$lib/components/AiChatView.svelte';
 	import DmenuView from '$lib/components/DmenuView.svelte';
+	import DownloadsView from '$lib/components/DownloadsView.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -129,6 +130,19 @@
 		commandName: 'ask-ai',
 		pluginPath: 'builtin:ai-chat',
 		icon: starsSquareIcon,
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	const downloadsPlugin: PluginInfo = {
+		title: 'Downloads',
+		description: 'View and manage your recent downloads',
+		pluginTitle: 'Flare',
+		pluginName: 'downloads',
+		commandName: 'downloads',
+		pluginPath: 'builtin:downloads',
+		icon: fileSearchCommandIcon, // reusing file search icon for now
 		preferences: [],
 		mode: 'view',
 		owner: 'flare'
@@ -394,6 +408,7 @@
 		importSnippetsPlugin,
 		fileSearchPlugin,
 		aiChatPlugin,
+		downloadsPlugin,
 		// System commands
 		lockScreenPlugin,
 		sleepPlugin,
@@ -475,7 +490,6 @@
 		// Listen for hotkey-triggered commands
 		listen<string>('execute-command', (event) => {
 			const commandId = event.payload;
-			console.log('[Hotkey] Executing command:', commandId);
 
 			// Find the plugin for this command
 			const plugin = allPlugins.find((p) => p.pluginPath === commandId);
@@ -612,6 +626,8 @@
 	<FileSearchView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'ai-chat'}
 	<AiChatView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'downloads'}
+	<DownloadsView onBack={viewManager.showCommandPalette} />
 {/if}
 
 {#if showLogViewer}

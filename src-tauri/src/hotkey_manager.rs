@@ -76,7 +76,7 @@ impl HotkeyManager {
 
     /// Load all hotkeys from database
     pub fn get_all_hotkeys(&self) -> Result<Vec<HotkeyConfig>, String> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("hotkey store mutex poisoned");
 
         let mut stmt = store
             .prepare("SELECT command_id, hotkey, modifiers, key FROM hotkeys ORDER BY command_id")
@@ -100,7 +100,7 @@ impl HotkeyManager {
 
     /// Save a hotkey configuration
     pub fn save_hotkey(&self, config: &HotkeyConfig) -> Result<(), String> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("hotkey store mutex poisoned");
 
         store
             .execute(
@@ -121,7 +121,7 @@ impl HotkeyManager {
 
     /// Remove a hotkey configuration
     pub fn remove_hotkey(&self, command_id: &str) -> Result<(), String> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("hotkey store mutex poisoned");
 
         store
             .execute(
@@ -136,7 +136,7 @@ impl HotkeyManager {
 
     /// Check if a hotkey combination is already in use
     pub fn detect_conflict(&self, modifiers: u8, key: &str) -> Result<Option<String>, String> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().expect("hotkey store mutex poisoned");
 
         let mut stmt = store
             .prepare("SELECT command_id FROM hotkeys WHERE modifiers = ?1 AND key = ?2")
@@ -180,7 +180,10 @@ impl HotkeyManager {
             .map_err(|e| format!("Failed to set hotkey handler: {}", e))?;
 
         // Track registered shortcut
-        let mut registered = self.registered.lock().unwrap();
+        let mut registered = self
+            .registered
+            .lock()
+            .expect("registered hotkeys mutex poisoned");
         registered.insert(command_id.clone(), shortcut);
 
         tracing::info!("Registered hotkey for command: {}", command_id);
@@ -189,7 +192,10 @@ impl HotkeyManager {
 
     /// Unregister a hotkey from Tauri
     pub fn unregister_shortcut(&self, app: &AppHandle, command_id: &str) -> Result<(), String> {
-        let mut registered = self.registered.lock().unwrap();
+        let mut registered = self
+            .registered
+            .lock()
+            .expect("registered hotkeys mutex poisoned");
 
         if let Some(shortcut) = registered.remove(command_id) {
             app.global_shortcut()
@@ -204,7 +210,10 @@ impl HotkeyManager {
 
     /// Get the command ID for a registered shortcut
     pub fn get_command_for_shortcut(&self, shortcut: &Shortcut) -> Option<String> {
-        let registered = self.registered.lock().unwrap();
+        let registered = self
+            .registered
+            .lock()
+            .expect("registered hotkeys mutex poisoned");
         registered
             .iter()
             .find(|(_, s)| *s == shortcut)

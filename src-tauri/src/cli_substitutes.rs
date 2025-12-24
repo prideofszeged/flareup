@@ -178,13 +178,13 @@ pub async fn substitute_macos_binaries(
                     }
 
                     substituted.push(binary_name.clone());
-                    eprintln!(
-                        "✅ Substituted macOS binary '{}' with Linux version",
-                        binary_name
+                    tracing::info!(
+                        binary = %binary_name,
+                        "Substituted macOS binary with Linux version"
                     );
                 }
                 Err(e) => {
-                    eprintln!("⚠️ Failed to substitute binary '{}': {}", binary_name, e);
+                    tracing::warn!(binary = %binary_name, error = %e, "Failed to substitute binary");
                 }
             }
         }

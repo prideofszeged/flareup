@@ -7,6 +7,7 @@ mod clipboard;
 pub mod clipboard_history;
 mod desktop;
 pub mod dmenu;
+mod downloads;
 mod error;
 mod extension_shims;
 mod extensions;
@@ -635,7 +636,13 @@ pub fn run() {
             hotkey_manager::set_command_hotkey,
             hotkey_manager::remove_command_hotkey,
             hotkey_manager::check_hotkey_conflict,
-            hotkey_manager::reset_hotkeys_to_defaults
+            hotkey_manager::reset_hotkeys_to_defaults,
+            downloads::downloads_get_items,
+            downloads::downloads_open_file,
+            downloads::downloads_show_in_folder,
+            downloads::downloads_delete_item,
+            downloads::downloads_delete_file,
+            downloads::downloads_clear_history
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -643,6 +650,7 @@ pub fn run() {
 
             clipboard_history::init(app.handle().clone());
             file_search::init(app.handle().clone());
+            downloads::init(app.handle().clone());
 
             app.manage(QuicklinkManager::new(app.handle())?);
             app.manage(FrecencyManager::new(app.handle())?);
@@ -758,7 +766,11 @@ fn dmenu_get_case_insensitive() -> bool {
 
 #[tauri::command]
 fn dmenu_select_item(item: String) {
-    if let Some(session) = DMENU_SESSION.lock().unwrap().as_ref() {
+    if let Some(session) = DMENU_SESSION
+        .lock()
+        .expect("dmenu session mutex poisoned")
+        .as_ref()
+    {
         session.output_selection(&item);
     }
     std::process::exit(0);
@@ -780,7 +792,7 @@ pub fn run_dmenu(session: DmenuSession) {
         .init();
 
     // Store the session in global state
-    *DMENU_SESSION.lock().unwrap() = Some(session);
+    *DMENU_SESSION.lock().expect("dmenu session mutex poisoned") = Some(session);
 
     tracing::info!("Starting Flare in dmenu mode");
 

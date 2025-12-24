@@ -38,7 +38,7 @@ impl Store {
     }
 
     pub fn conn(&self) -> MutexGuard<Connection> {
-        self.db.lock().unwrap()
+        self.db.lock().expect("store db mutex poisoned")
     }
 
     pub fn query<T: Storable, P: rusqlite::Params>(

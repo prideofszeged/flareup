@@ -32,7 +32,7 @@ impl FileSearchManager {
     }
 
     pub fn init_db(&self) -> RusqliteResult<()> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
 
         db.execute(
             "CREATE TABLE IF NOT EXISTS file_index (
@@ -83,7 +83,7 @@ impl FileSearchManager {
     }
 
     pub fn add_file(&self, file: &IndexedFile) -> Result<(), AppError> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
         db.execute(
             "INSERT OR REPLACE INTO file_index (path, name, parent_path, file_type, last_modified)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -104,7 +104,7 @@ impl FileSearchManager {
             return Ok(());
         }
 
-        let mut db = self.db.lock().unwrap();
+        let mut db = self.db.lock().expect("file search db mutex poisoned");
         let tx = db.transaction()?;
 
         {
@@ -129,13 +129,13 @@ impl FileSearchManager {
     }
 
     pub fn remove_file(&self, path: &str) -> Result<(), AppError> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
         db.execute("DELETE FROM file_index WHERE path = ?1", params![path])?;
         Ok(())
     }
 
     pub fn get_file_last_modified(&self, path: &str) -> Result<Option<i64>, AppError> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
         let last_modified: Result<Option<i64>, rusqlite::Error> = db
             .query_row(
                 "SELECT last_modified FROM file_index WHERE path = ?1",
@@ -151,7 +151,7 @@ impl FileSearchManager {
     pub fn get_all_file_timestamps(
         &self,
     ) -> Result<std::collections::HashMap<String, i64>, AppError> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
         let mut stmt = db.prepare("SELECT path, last_modified FROM file_index")?;
 
         let timestamps_iter = stmt.query_map([], |row| {
@@ -168,7 +168,7 @@ impl FileSearchManager {
     }
 
     pub fn search_files(&self, term: &str, limit: u32) -> Result<Vec<IndexedFile>, AppError> {
-        let db = self.db.lock().unwrap();
+        let db = self.db.lock().expect("file search db mutex poisoned");
         let mut stmt = db.prepare(
             "SELECT t1.path, t1.name, t1.parent_path, t1.file_type, t1.last_modified
              FROM file_index t1 JOIN file_index_fts t2 ON t1.rowid = t2.rowid

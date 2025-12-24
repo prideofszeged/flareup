@@ -29,7 +29,8 @@ export type ViewState =
 	| 'create-snippet-form'
 	| 'import-snippets'
 	| 'file-search'
-	| 'ai-chat';
+	| 'ai-chat'
+	| 'downloads';
 
 type OauthState = {
 	url: string;
@@ -99,13 +100,11 @@ class ViewManager {
 		this.currentView = 'ai-chat';
 	};
 
-	runPlugin = async (plugin: PluginInfo) => {
-		console.log('[DEBUG] runPlugin called with:', {
-			title: plugin.title,
-			pluginPath: plugin.pluginPath,
-			commandName: plugin.commandName
-		});
+	showDownloads = () => {
+		this.currentView = 'downloads';
+	};
 
+	runPlugin = async (plugin: PluginInfo) => {
 		switch (plugin.pluginPath) {
 			case 'builtin:store':
 				this.showExtensions();
@@ -131,12 +130,13 @@ class ViewManager {
 			case 'builtin:ai-chat':
 				this.showAiChat();
 				return;
+			case 'builtin:downloads':
+				this.showDownloads();
+				return;
 			// System commands
 			case 'builtin:lock-screen':
-				console.log('[DEBUG] Executing lock screen command');
 				try {
 					await invoke('execute_power_command', { command: 'lock' });
-					console.log('[DEBUG] Lock screen command completed');
 				} catch (error) {
 					console.error('[ERROR] Lock screen failed:', error);
 				}

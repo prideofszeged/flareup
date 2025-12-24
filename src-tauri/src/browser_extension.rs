@@ -77,17 +77,20 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
     let ws_stream = match tokio_tungstenite::accept_async(stream).await {
         Ok(ws) => ws,
         Err(e) => {
-            eprintln!("WebSocket handshake error: {}", e);
+            tracing::warn!(error = %e, "WebSocket handshake error");
             return;
         }
     };
 
-    *state.is_connected.lock().unwrap() = true;
-    println!("Browser extension connected.");
+    *state
+        .is_connected
+        .lock()
+        .expect("is_connected mutex poisoned") = true;
+    tracing::info!("Browser extension connected");
 
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-    *state.connection.lock().unwrap() = Some(tx);
+    *state.connection.lock().expect("connection mutex poisoned") = Some(tx);
 
     let sender_task = tokio::spawn(async move {
         while let Some(msg_to_send) = rx.recv().await {
@@ -122,7 +125,7 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
                                 .state::<WsState>()
                                 .connection
                                 .lock()
-                                .unwrap()
+                                .expect("connection mutex poisoned")
                                 .clone();
                             if let Some(tx) = tx {
                                 let _ = tx.send(response.to_string()).await;
@@ -134,7 +137,7 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
                             .state::<WsState>()
                             .pending_requests
                             .lock()
-                            .unwrap()
+                            .expect("pending_requests mutex poisoned")
                             .remove(&id);
                         if let Some(sender) = sender {
                             if !error.is_null() {
@@ -145,10 +148,10 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
                         }
                     }
                     Ok(IncomingMessage::Notification { method, params }) => {
-                        println!("Received notification: {} with params {:?}", method, params);
+                        tracing::debug!(method = %method, ?params, "Received notification");
                     }
                     Err(e) => {
-                        eprintln!("Failed to parse message from browser extension: {}", e);
+                        tracing::warn!(error = %e, "Failed to parse message from browser extension");
                     }
                 }
             }
@@ -160,9 +163,12 @@ async fn handle_connection(stream: TcpStream, app_handle: AppHandle) {
         _ = receiver_task => {},
     }
 
-    *state.is_connected.lock().unwrap() = false;
-    *state.connection.lock().unwrap() = None;
-    println!("Browser extension disconnected.");
+    *state
+        .is_connected
+        .lock()
+        .expect("is_connected mutex poisoned") = false;
+    *state.connection.lock().expect("connection mutex poisoned") = None;
+    tracing::info!("Browser extension disconnected");
 }
 
 pub async fn run_server(app_handle: AppHandle) {
@@ -186,7 +192,10 @@ pub async fn run_server(app_handle: AppHandle) {
 pub async fn browser_extension_check_connection(
     state: tauri::State<'_, WsState>,
 ) -> Result<bool, String> {
-    Ok(*state.is_connected.lock().unwrap())
+    Ok(*state
+        .is_connected
+        .lock()
+        .expect("is_connected mutex poisoned"))
 }
 
 #[tauri::command]
@@ -198,13 +207,16 @@ pub async fn browser_extension_request(
     use std::time::Duration;
 
     let tx = {
-        let lock = state.connection.lock().unwrap();
+        let lock = state.connection.lock().expect("connection mutex poisoned");
         lock.clone()
     };
 
     if let Some(tx) = tx {
         let request_id = {
-            let mut counter = state.request_id_counter.lock().unwrap();
+            let mut counter = state
+                .request_id_counter
+                .lock()
+                .expect("request_id_counter mutex poisoned");
             *counter += 1;
             *counter
         };
@@ -220,7 +232,7 @@ pub async fn browser_extension_request(
         state
             .pending_requests
             .lock()
-            .unwrap()
+            .expect("pending_requests mutex poisoned")
             .insert(request_id, response_tx);
 
         if tx.send(request.to_string()).await.is_err() {

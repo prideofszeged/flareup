@@ -493,16 +493,17 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let package_json_path = plugin_dir.join("package.json");
 
         if !package_json_path.exists() {
-            eprintln!("Plugin {} has no package.json, skipping", plugin_dir_name);
+            tracing::warn!(plugin = %plugin_dir_name, "Plugin has no package.json, skipping");
             continue;
         }
 
         let package_json_content = match fs::read_to_string(&package_json_path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!(
-                    "Error reading package.json for plugin {}: {}",
-                    plugin_dir_name, e
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %e,
+                    "Error reading package.json for plugin"
                 );
                 continue;
             }
@@ -511,9 +512,10 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let package_json: PackageJson = match serde_json::from_str(&package_json_content) {
             Ok(json) => json,
             Err(e) => {
-                eprintln!(
-                    "Error parsing package.json for plugin {}: {}",
-                    plugin_dir_name, e
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %e,
+                    "Error parsing package.json for plugin"
                 );
                 continue;
             }
@@ -522,9 +524,10 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let compatibility_metadata = match load_compatibility_metadata(&plugin_dir) {
             Ok(data) => data,
             Err(err) => {
-                eprintln!(
-                    "Failed to load compatibility metadata for {}: {}",
-                    plugin_dir_name, err
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %err,
+                    "Failed to load compatibility metadata"
                 );
                 vec![]
             }
@@ -571,10 +574,10 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                     };
                     plugins.push(plugin_info);
                 } else {
-                    eprintln!(
-                        "Command file {} not found for command {}",
-                        command_file_path.display(),
-                        command.name
+                    tracing::warn!(
+                        command = %command.name,
+                        path = %command_file_path.display(),
+                        "Command file not found"
                     );
                 }
             }
@@ -613,14 +616,14 @@ pub async fn install_extension(
         {
             Ok(substituted) => {
                 if !substituted.is_empty() {
-                    eprintln!(
-                        "✅ Successfully substituted {} macOS binaries with Linux versions",
-                        substituted.len()
+                    tracing::info!(
+                        count = substituted.len(),
+                        "Successfully substituted macOS binaries with Linux versions"
                     );
                 }
             }
             Err(e) => {
-                eprintln!("⚠️ Failed to substitute some binaries: {}", e);
+                tracing::warn!(error = %e, "Failed to substitute some binaries");
             }
         }
     }
