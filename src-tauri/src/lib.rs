@@ -176,10 +176,10 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
         Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
     };
 
-    let spotlight_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::ALT), Code::Space);
+    let spotlight_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
 
     // Register the shortcut handler
-    tracing::info!("Registering global shortcut: Super+Alt+Space");
+    tracing::info!("Registering global shortcut: Ctrl+Alt+Space");
     app.global_shortcut()
         .on_shortcut(spotlight_shortcut, move |app, shortcut, event| {
             tracing::debug!(
@@ -200,11 +200,34 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
                         Ok(false) => {
                             tracing::debug!("Window hidden, showing");
                             let _ = window.show();
-                            // Small delay to ensure window is fully visible before focusing
+                            // Ensure window is on top (Linux WMs sometimes ignore config setting)
+                            let _ = window.set_always_on_top(true);
+                            // Request focus immediately
+                            let _ = window.set_focus();
+                            // Use xdotool to force focus via mouse click (bypasses WM focus-stealing prevention)
                             let window_clone = window.clone();
                             tauri::async_runtime::spawn(async move {
-                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                                let _ = window_clone.set_focus();
+                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                                // Get window position and size to click in the center (on the input)
+                                if let (Ok(pos), Ok(size)) =
+                                    (window_clone.outer_position(), window_clone.outer_size())
+                                {
+                                    // Click near the top center where the search input is
+                                    let click_x = pos.x + (size.width as i32 / 2);
+                                    let click_y = pos.y + 40; // Near top for the input
+                                    let _ = std::process::Command::new("xdotool")
+                                        .args([
+                                            "mousemove",
+                                            "--sync",
+                                            &click_x.to_string(),
+                                            &click_y.to_string(),
+                                            "click",
+                                            "1",
+                                        ])
+                                        .stderr(std::process::Stdio::null())
+                                        .stdout(std::process::Stdio::null())
+                                        .spawn();
+                                }
                             });
                         }
                         Err(e) => {

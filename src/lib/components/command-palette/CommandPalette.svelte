@@ -4,7 +4,7 @@
 	import BaseList from '$lib/components/BaseList.svelte';
 	import ListItemBase from '../nodes/shared/ListItemBase.svelte';
 	import path from 'path';
-	import { tick } from 'svelte';
+	import { tick, onMount } from 'svelte';
 	import type { Quicklink } from '$lib/quicklinks.svelte';
 	import { appsStore } from '$lib/apps.svelte';
 	import { frecencyStore } from '$lib/frecency.svelte';
@@ -48,6 +48,34 @@
 	);
 
 	const selectedItem = $derived(displayItems[selectedIndex]);
+
+	// Focus input on mount and when window gains focus
+	onMount(() => {
+		// Focus immediately on mount
+		searchInputEl?.focus();
+
+		// Also focus when window gains focus (for hotkey activation)
+		const handleWindowFocus = () => {
+			if (focusManager.activeScope === 'main-input') {
+				searchInputEl?.focus();
+			}
+		};
+
+		window.addEventListener('focus', handleWindowFocus);
+
+		// Also handle visibility changes
+		const handleVisibility = () => {
+			if (!document.hidden && focusManager.activeScope === 'main-input') {
+				tick().then(() => searchInputEl?.focus());
+			}
+		};
+		document.addEventListener('visibilitychange', handleVisibility);
+
+		return () => {
+			window.removeEventListener('focus', handleWindowFocus);
+			document.removeEventListener('visibilitychange', handleVisibility);
+		};
+	});
 
 	$effect(() => {
 		if (focusManager.activeScope === 'main-input') {
