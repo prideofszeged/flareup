@@ -30,6 +30,7 @@
 	import AiChatView from '$lib/components/AiChatView.svelte';
 	import DmenuView from '$lib/components/DmenuView.svelte';
 	import DownloadsView from '$lib/components/DownloadsView.svelte';
+	import QuickAiView from '$lib/components/QuickAiView.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -481,7 +482,9 @@
 		quicklinkToEdit,
 		snippetToEdit,
 		snippetsForImport,
-		commandToConfirm
+		commandToConfirm,
+		quickAiPrompt,
+		quickAiSelection
 	} = $derived(viewManager);
 
 	let showLogViewer = $state(false);
@@ -671,6 +674,12 @@
 	<AiChatView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'downloads'}
 	<DownloadsView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'quick-ai'}
+	<QuickAiView
+		prompt={quickAiPrompt}
+		selection={quickAiSelection}
+		onClose={viewManager.hideQuickAi}
+	/>
 {/if}
 
 {#if showLogViewer}

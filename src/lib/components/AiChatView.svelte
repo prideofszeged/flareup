@@ -118,6 +118,24 @@
 	}
 
 	onMount(() => {
+		// Check if we're coming from Quick AI with a conversation
+		if (viewManager.quickAiPrompt && viewManager.quickAiResponse) {
+			// Build the full prompt that was used
+			const userContent = viewManager.quickAiSelection
+				? `${viewManager.quickAiPrompt}\n\nSelected text:\n${viewManager.quickAiSelection}`
+				: viewManager.quickAiPrompt;
+
+			messages = [
+				{ role: 'user', content: userContent },
+				{ role: 'assistant', content: viewManager.quickAiResponse }
+			];
+
+			// Clear the Quick AI state
+			viewManager.quickAiPrompt = '';
+			viewManager.quickAiSelection = '';
+			viewManager.quickAiResponse = '';
+		}
+
 		loadConversations();
 
 		const unlistenChunk = listen<{ request_id: string; text: string }>(

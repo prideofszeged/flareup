@@ -18,7 +18,9 @@
 	import MainLayout from '../layout/MainLayout.svelte';
 	import Header from '../layout/Header.svelte';
 	import { settingsStore } from '$lib/settings.svelte';
+	import { viewManager } from '$lib/viewManager.svelte';
 	import Icon from '../Icon.svelte';
+	import { invoke } from '@tauri-apps/api/core';
 
 	type Props = {
 		plugins: PluginInfo[];
@@ -151,7 +153,30 @@
 	}
 
 	const closeOnBlurEnabled = $derived(settingsStore.settings.closeOnBlur);
+
+	// Tab key triggers Quick AI when there's text in the search input AND input is focused
+	function handleSearchKeydown(e: KeyboardEvent) {
+		// Only intercept Tab if search input is focused and has text
+		if (e.key === 'Tab' && searchText.trim() && document.activeElement === searchInputEl) {
+			console.log('[CommandPalette] Tab detected with focused input and text, triggering Quick AI');
+			e.preventDefault();
+			e.stopPropagation();
+			// Fire off the async operation without awaiting
+			(async () => {
+				// Get selected text from the system if available
+				let selection = '';
+				try {
+					selection = await invoke<string>('get_selected_text');
+				} catch {
+					// Silently ignore - no selection available
+				}
+				viewManager.showQuickAi(searchText.trim(), selection);
+			})();
+		}
+	}
 </script>
+
+<svelte:window on:keydown|capture={handleSearchKeydown} />
 
 <MainLayout>
 	{#snippet header()}
@@ -200,6 +225,7 @@
 			<!-- Pin/Unpin toggle for close-on-blur -->
 			<button
 				onclick={toggleCloseOnBlur}
+				tabindex={-1}
 				class="hover:bg-accent ml-2 flex shrink-0 items-center rounded p-1.5 transition-colors"
 				title={closeOnBlurEnabled
 					? 'Pin window (disable close on blur)'

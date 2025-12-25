@@ -30,7 +30,9 @@ export type ViewState =
 	| 'import-snippets'
 	| 'file-search'
 	| 'ai-chat'
-	| 'downloads';
+	| 'downloads'
+	| 'quick-ai';
+
 
 type OauthState = {
 	url: string;
@@ -50,6 +52,13 @@ class ViewManager {
 
 	oauthState: OauthState = $state(null);
 	oauthStatus: 'initial' | 'authorizing' | 'success' | 'error' = $state('initial');
+
+	// Quick AI state
+	quickAiPrompt = $state('');
+	quickAiSelection = $state('');
+	quickAiResponse = $state('');
+
+
 
 	showCommandPalette = () => {
 		this.currentView = 'command-palette';
@@ -103,6 +112,19 @@ class ViewManager {
 	showDownloads = () => {
 		this.currentView = 'downloads';
 	};
+
+	showQuickAi = (prompt: string, selection: string = '') => {
+		this.quickAiPrompt = prompt;
+		this.quickAiSelection = selection;
+		this.currentView = 'quick-ai';
+	};
+
+	hideQuickAi = () => {
+		this.quickAiPrompt = '';
+		this.quickAiSelection = '';
+		this.showCommandPalette();
+	};
+
 
 	runPlugin = async (plugin: PluginInfo) => {
 		switch (plugin.pluginPath) {
