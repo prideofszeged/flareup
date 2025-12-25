@@ -49,7 +49,7 @@
 			'system'
 		];
 		if (value && validThemes.includes(value)) {
-			settingsStore.updateSetting('theme', value);
+			settingsStore.updateSetting('theme', value as any);
 			applyTheme(value);
 		}
 	}

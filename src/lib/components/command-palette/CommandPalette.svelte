@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PluginInfo } from '@flare/protocol';
+	import { APP_VERSION } from '$lib/version';
 	import Calculator from '$lib/components/Calculator.svelte';
 	import BaseList from '$lib/components/BaseList.svelte';
 	import ListItemBase from '../nodes/shared/ListItemBase.svelte';
@@ -259,7 +260,7 @@
 	{#snippet footer()}
 		<CommandPaletteActionBar {selectedItem} {actions} {setSearchText} />
 		<div class="text-muted-foreground/50 absolute right-0 bottom-2 left-0 text-center text-[10px]">
-			v0.1.0
+			v{APP_VERSION}
 		</div>
 	{/snippet}
 </MainLayout>

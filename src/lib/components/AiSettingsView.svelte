@@ -4,6 +4,7 @@
 	import { Switch } from './ui/switch';
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
+	import { APP_VERSION } from '$lib/version';
 	import PasswordInput from './PasswordInput.svelte';
 	import * as Select from './ui/select';
 	import { uiStore } from '$lib/ui.svelte';
@@ -249,5 +250,5 @@
 			{isSaving ? 'Saving...' : 'Save AI Settings'}
 		</Button>
 	</div>
-	<div class="text-muted-foreground mt-4 text-center text-xs">Flareup v0.1.0</div>
+	<div class="text-muted-foreground mt-4 text-center text-xs">Flareup v{APP_VERSION}</div>
 </div>
