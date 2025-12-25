@@ -8,23 +8,57 @@
 
 	const { settings } = $derived(settingsStore);
 
-	function applyTheme(theme: 'light' | 'dark' | 'system') {
+	function applyTheme(theme: string) {
 		const root = document.documentElement;
+
+		// Remove all theme classes first
+		root.classList.remove(
+			'dark',
+			'tokyo-night',
+			'dracula',
+			'nord',
+			'catppuccin',
+			'gruvbox',
+			'one-dark'
+		);
 
 		if (theme === 'system') {
 			// Check system preference
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			root.classList.toggle('dark', prefersDark);
+			if (prefersDark) {
+				root.classList.add('dark');
+			}
+		} else if (theme === 'light') {
+			// Light theme is the default, no class needed
 		} else {
-			root.classList.toggle('dark', theme === 'dark');
+			// Apply specific theme class (dark, tokyo-night, dracula, etc.)
+			root.classList.add(theme);
 		}
 	}
 
 	function handleThemeChange(value: string | undefined) {
-		if (value && (value === 'light' || value === 'dark' || value === 'system')) {
+		const validThemes = [
+			'light',
+			'dark',
+			'tokyo-night',
+			'dracula',
+			'nord',
+			'catppuccin',
+			'gruvbox',
+			'one-dark',
+			'system'
+		];
+		if (value && validThemes.includes(value)) {
 			settingsStore.updateSetting('theme', value);
 			applyTheme(value);
 		}
+	}
+
+	function formatThemeName(theme: string): string {
+		return theme
+			.split('-')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 	}
 
 	function handleFontSizeChange(value: string | undefined) {
@@ -70,12 +104,18 @@
 				{#snippet control()}
 					<Select.Root value={settings.theme} onValueChange={handleThemeChange} type="single">
 						<Select.Trigger class="w-40">
-							{settings.theme.charAt(0).toUpperCase() + settings.theme.slice(1)}
+							{formatThemeName(settings.theme)}
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="system">System</Select.Item>
 							<Select.Item value="light">Light</Select.Item>
 							<Select.Item value="dark">Dark</Select.Item>
+							<Select.Item value="tokyo-night">Tokyo Night</Select.Item>
+							<Select.Item value="dracula">Dracula</Select.Item>
+							<Select.Item value="nord">Nord</Select.Item>
+							<Select.Item value="catppuccin">Catppuccin</Select.Item>
+							<Select.Item value="gruvbox">Gruvbox</Select.Item>
+							<Select.Item value="one-dark">One Dark</Select.Item>
 						</Select.Content>
 					</Select.Root>
 				{/snippet}

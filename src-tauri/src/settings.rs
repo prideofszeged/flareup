@@ -10,7 +10,7 @@ use tracing::{error, info};
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     // Appearance
-    pub theme: String, // "light", "dark", "system"
+    pub theme: String, // "light", "dark", "tokyo-night", "system"
     pub window_opacity: f32,
     pub font_size: String, // "small", "medium", "large"
 

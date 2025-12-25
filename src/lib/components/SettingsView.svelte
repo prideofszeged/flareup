@@ -24,14 +24,30 @@
 
 	let activeTab = $state('general');
 
-	function applyTheme(theme: 'light' | 'dark' | 'system') {
+	function applyTheme(theme: string) {
 		const root = document.documentElement;
+
+		// Remove all theme classes first
+		root.classList.remove(
+			'dark',
+			'tokyo-night',
+			'dracula',
+			'nord',
+			'catppuccin',
+			'gruvbox',
+			'one-dark'
+		);
 
 		if (theme === 'system') {
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			root.classList.toggle('dark', prefersDark);
+			if (prefersDark) {
+				root.classList.add('dark');
+			}
+		} else if (theme === 'light') {
+			// Light theme is default, no class needed
 		} else {
-			root.classList.toggle('dark', theme === 'dark');
+			// Apply specific theme class
+			root.classList.add(theme);
 		}
 	}
 
