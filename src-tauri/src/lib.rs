@@ -21,6 +21,7 @@ mod oauth;
 mod quick_toggles;
 mod quicklinks;
 mod settings;
+mod shim_registry;
 mod snippets;
 mod soulver;
 mod store;
@@ -298,6 +299,49 @@ fn shim_run_applescript(script: String) -> extension_shims::ShimResult {
 #[tauri::command]
 fn shim_get_system_info() -> std::collections::HashMap<String, String> {
     extension_shims::SystemShim::get_system_info()
+}
+
+// Shim registry commands (Mason-like tool installation)
+#[tauri::command]
+fn shim_scan_extension(extension_code: String) -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry
+        .find_tools_in_code(&extension_code)
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+#[tauri::command]
+fn shim_get_all_tools() -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry.all().into_iter().cloned().collect()
+}
+
+#[tauri::command]
+fn shim_check_tool_installed(test_command: String) -> bool {
+    shim_registry::is_tool_installed(&test_command)
+}
+
+#[tauri::command]
+fn shim_get_shim_dir() -> String {
+    shim_registry::get_shim_dir().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+fn shim_install_wrapper_scripts(tool_names: Vec<String>) -> Result<(), String> {
+    let registry = shim_registry::ToolRegistry::new();
+    let mappings: Vec<&shim_registry::ToolMapping> = tool_names
+        .iter()
+        .filter_map(|name| registry.get(name))
+        .collect();
+
+    shim_registry::install_shims(&mappings)
+}
+
+#[tauri::command]
+fn shim_detect_distro() -> String {
+    format!("{:?}", shim_registry::detect_distro())
 }
 
 // System monitor commands
@@ -611,6 +655,12 @@ pub fn run() {
             shim_translate_path,
             shim_run_applescript,
             shim_get_system_info,
+            shim_scan_extension,
+            shim_get_all_tools,
+            shim_check_tool_installed,
+            shim_get_shim_dir,
+            shim_install_wrapper_scripts,
+            shim_detect_distro,
             monitor_get_cpu,
             monitor_get_memory,
             monitor_get_disks,

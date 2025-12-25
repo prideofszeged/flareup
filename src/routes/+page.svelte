@@ -639,6 +639,7 @@
 		onSavePreferences={handleSavePreferences}
 		onGetPreferences={handleGetPreferences}
 		{currentPreferences}
+		onRefreshPlugins={onExtensionInstalled}
 	/>
 {:else if currentView === 'extensions-store'}
 	<Extensions onBack={viewManager.showCommandPalette} onInstall={onExtensionInstalled} />

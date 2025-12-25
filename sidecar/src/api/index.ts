@@ -10,6 +10,7 @@ import { Grid } from './components/grid';
 import { Form } from './components/form';
 import { Action, ActionPanel } from './components/actions';
 import { Detail } from './components/detail';
+import { MenuBarExtra } from './components/menubar';
 import {
 	environment,
 	getSelectedFinderItems,
@@ -63,6 +64,7 @@ export const getRaycastApi = () => {
 		Form,
 		Grid,
 		List,
+		MenuBarExtra,
 		Clipboard,
 		environment,
 		getApplications,
@@ -88,6 +90,13 @@ export const getRaycastApi = () => {
 				type: 'close-main-window',
 				payload: {}
 			});
+		},
+		updateCommandMetadata: async (metadata: { subtitle?: string; tooltip?: string }) => {
+			// For no-view commands, this updates the command's metadata
+			// We'll just log it for now - in the future could store in preferences
+			console.log('updateCommandMetadata called with:', metadata);
+			// No-op for now since we don't have a persistent command list UI
+			return Promise.resolve();
 		},
 		popToRoot: async () => {
 			// Navigate back to plugin list - extensions handle this themselves

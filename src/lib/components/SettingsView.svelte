@@ -17,10 +17,17 @@
 		onSavePreferences: (pluginName: string, values: Record<string, unknown>) => void;
 		onGetPreferences: (pluginName: string) => void;
 		currentPreferences: Record<string, unknown>;
+		onRefreshPlugins?: () => void;
 	};
 
-	let { plugins, onBack, onSavePreferences, onGetPreferences, currentPreferences }: Props =
-		$props();
+	let {
+		plugins,
+		onBack,
+		onSavePreferences,
+		onGetPreferences,
+		currentPreferences,
+		onRefreshPlugins
+	}: Props = $props();
 
 	let activeTab = $state('general');
 
@@ -97,6 +104,7 @@
 				{onSavePreferences}
 				{onGetPreferences}
 				{currentPreferences}
+				{onRefreshPlugins}
 			/>
 		</Tabs.Content>
 
