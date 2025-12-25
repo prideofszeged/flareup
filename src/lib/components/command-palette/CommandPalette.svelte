@@ -17,6 +17,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import MainLayout from '../layout/MainLayout.svelte';
 	import Header from '../layout/Header.svelte';
+	import { settingsStore } from '$lib/settings.svelte';
+	import Icon from '../Icon.svelte';
 
 	type Props = {
 		plugins: PluginInfo[];
@@ -142,6 +144,13 @@
 			focusManager.releaseFocus('quicklink-argument');
 		}
 	}
+
+	async function toggleCloseOnBlur() {
+		settingsStore.settings.closeOnBlur = !settingsStore.settings.closeOnBlur;
+		await settingsStore.saveSettings();
+	}
+
+	const closeOnBlurEnabled = $derived(settingsStore.settings.closeOnBlur);
 </script>
 
 <MainLayout>
@@ -187,6 +196,20 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Pin/Unpin toggle for close-on-blur -->
+			<button
+				onclick={toggleCloseOnBlur}
+				class="hover:bg-accent ml-2 flex shrink-0 items-center rounded p-1.5 transition-colors"
+				title={closeOnBlurEnabled
+					? 'Pin window (disable close on blur)'
+					: 'Unpin window (enable close on blur)'}
+			>
+				<Icon
+					icon={closeOnBlurEnabled ? 'pin-16' : 'pin-disabled-16'}
+					class="size-4 {closeOnBlurEnabled ? 'text-muted-foreground' : 'text-primary'}"
+				/>
+			</button>
 		</Header>
 	{/snippet}
 
