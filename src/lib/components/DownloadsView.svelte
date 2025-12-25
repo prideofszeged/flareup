@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount, tick, untrack } from 'svelte';
-	import { Loader2, FolderOpen, Trash2, ExternalLink } from '@lucide/svelte';
+	import { Loader2, FolderOpen, Trash2, ExternalLink, LayoutGrid, List } from '@lucide/svelte';
 	import ListItemBase from './nodes/shared/ListItemBase.svelte';
 	import * as Select from './ui/select';
 	import ActionBar from './nodes/shared/ActionBar.svelte';
@@ -34,6 +34,8 @@
 	let selectedIndex = $state(0);
 	let searchText = $state('');
 	let filter = $state('all');
+	let sortBy = $state('date');
+	let viewMode = $state<'list' | 'grid'>('list');
 	let listContainerEl = $state<HTMLElement | null>(null);
 	let isInitialMount = $state(true);
 
@@ -195,7 +197,7 @@
 	});
 
 	$effect(() => {
-		[searchText, filter];
+		[searchText, filter, sortBy];
 		if (isInitialMount) return;
 
 		untrack(() => {
@@ -237,6 +239,16 @@
 				class="!pl-2.5"
 			/>
 			{#snippet actions()}
+				<Select.Root bind:value={sortBy} type="single">
+					<Select.Trigger class="w-32">
+						{sortBy === 'date' ? 'Date Added' : sortBy === 'name' ? 'Name' : 'Modified'}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="date">Date Added</Select.Item>
+						<Select.Item value="name">Name</Select.Item>
+						<Select.Item value="modified">Modified</Select.Item>
+					</Select.Content>
+				</Select.Root>
 				<Select.Root bind:value={filter} type="single">
 					<Select.Trigger class="w-32">
 						{filter === 'all' ? 'All Files' : filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -250,6 +262,17 @@
 						<Select.Item value="archives">Archives</Select.Item>
 					</Select.Content>
 				</Select.Root>
+				<button
+					onclick={() => (viewMode = viewMode === 'list' ? 'grid' : 'list')}
+					class="hover:bg-accent rounded-md p-2 transition-colors"
+					title={viewMode === 'list' ? 'Switch to Grid View' : 'Switch to List View'}
+				>
+					{#if viewMode === 'list'}
+						<LayoutGrid class="size-4" />
+					{:else}
+						<List class="size-4" />
+					{/if}
+				</button>
 			{/snippet}
 		</Header>
 	{/snippet}
@@ -262,7 +285,7 @@
 					>
 						<p>No downloads found</p>
 					</div>
-				{:else}
+				{:else if viewMode === 'list'}
 					<BaseList items={allItems} bind:selectedIndex onenter={(item) => handleOpen(item)}>
 						{#snippet itemSnippet({ item, isSelected, onclick: itemOnClick })}
 							<button class="w-full" onclick={itemOnClick}>
@@ -275,6 +298,39 @@
 							</button>
 						{/snippet}
 					</BaseList>
+				{:else}
+					<!-- Grid View -->
+					<div class="grid grid-cols-3 gap-4 p-4">
+						{#each allItems as item, index}
+							<button
+								onclick={() => (selectedIndex = index)}
+								ondblclick={() => handleOpen(item)}
+								class="hover:bg-accent/50 flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors {selectedIndex ===
+								index
+									? 'bg-accent border-primary'
+									: 'border-transparent'}"
+							>
+								{#if item.extension && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(item.extension.toLowerCase())}
+									<img
+										src={`file://${item.path}`}
+										alt={item.name}
+										class="h-24 w-full rounded object-cover"
+										onerror={(e) => {
+											(e.target as HTMLImageElement).style.display = 'none';
+										}}
+									/>
+								{:else}
+									<div class="flex h-24 w-full items-center justify-center rounded bg-black/10">
+										<span class="text-muted-foreground text-2xl font-semibold uppercase">
+											{item.extension || '?'}
+										</span>
+									</div>
+								{/if}
+								<p class="w-full truncate text-center text-sm">{item.name}</p>
+								<p class="text-muted-foreground text-xs">{formatFileSize(item.sizeBytes)}</p>
+							</button>
+						{/each}
+					</div>
 				{/if}
 				{#if isFetching && allItems.length > 0}
 					<div class="text-muted-foreground flex h-10 items-center justify-center">
