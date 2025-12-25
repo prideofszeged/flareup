@@ -1,27 +1,61 @@
 # Archived Planning Documents
 
-This directory contains historical planning and analysis documents that have been superseded by **ROADMAP.md** in the project root.
+This directory contains historical audit reports. All active planning has moved to **[ROADMAP.md](/ROADMAP.md)**.
 
-These files are preserved for historical reference but should not be considered current.
+## 📋 Active Documents
 
-## Archive Contents
+- **[ROADMAP.md](/ROADMAP.md)** ← **USE THIS!** - Comprehensive roadmap (updated Dec 24, 2025)
+  - Current status: v0.1.1, 75% Raycast parity
+  - Next priorities: Per-command hotkeys, system commands
+  - Milestones and feature tracking
 
-| File | Date | Superseded By |
-|------|------|---------------|
-| TODO.md | 2025-12-21 | ROADMAP.md |
-| AUDIT_REPORT.md | 2025-12-21 | ROADMAP.md |
-| CLAUDE_REVIEW_2025-12-22.md | 2025-12-22 | ROADMAP.md |
-| FEATURE_IDEAS.md | 2025-12-21 | ROADMAP.md (Future Enhancements) |
-| RAYCAST_GAPS.md | 2025-12-21 | ROADMAP.md (Strategic Priorities) |
+## 📚 Archive Contents
 
-## Current Documentation
+### Audit Reports (Reference Only)
+  
+- **[AUDIT_REPORT.md](./AUDIT_REPORT.md)** - Comprehensive code audit (Dec 21, 2025)
+  - 📖 Status: Reference document
+  - 🔍 Contains: Performance analysis, code quality review, security concerns
+  - 💡 Note: Many issues addressed in v0.1.0 and v0.1.1
+  
+- **[CLAUDE_REVIEW_2025-12-22.md](./CLAUDE_REVIEW_2025-12-22.md)** - Code review (Dec 22, 2025)
+  - ✅ Status: Issues fixed in v0.1.0 and v0.1.1
+  - 🐛 Addressed: Extension compatibility, database performance, graceful error handling
 
-**For up-to-date project status and roadmap, see:**
-- `/ROADMAP.md` - Comprehensive status, roadmap, and priorities
+## 🔄 Completions Since Audit (v0.1.0 - v0.1.1)
 
-**For technical documentation, see:**
-- `/docs/EXTENSION_COMPATIBILITY.md` - Extension shim layer reference
-- `/AGENTS.md` - Repository contributor guidelines
-- `/BUILDING.md` - Build instructions
-- `/README.md` - Project overview
-- `/CLAUDE.md` - AI assistant instructions
+Items from the audit reports that have been completed:
+
+### Performance & Stability
+- ✅ Database indices added (clipboard, AI, snippets)
+- ✅ N+1 query fix in file indexer
+- ✅ CPU monitor background thread (non-blocking)
+- ✅ Structured logging with tracing crate
+
+### Code Quality
+- ✅ Debug console.log statements removed
+- ✅ println!/eprintln! replaced with proper logging
+- ✅ Extension compatibility fixes (React Reconciler, usePersistentState)
+- ✅ TcpListener graceful port conflict handling
+
+### Features Added
+- ✅ Comprehensive settings system (6 tabs)
+- ✅ Theme support (9 professional themes)
+- ✅ Close on blur functionality
+- ✅ Auto-start on login
+- ✅ Frecency bug fix (timestamp conversion)
+- ✅ Window edge visibility improvements
+- ✅ Version management automation
+
+## 📖 Using These Documents
+
+**For current work:** Always refer to [ROADMAP.md](/ROADMAP.md)
+
+**For historical context:**
+- Understanding technical debt inventory → AUDIT_REPORT.md
+- Reviewing past code quality issues → CLAUDE_REVIEW_2025-12-22.md
+
+---
+
+**Last Updated:** Dec 24, 2025  
+**Maintained By:** Reference only - see ROADMAP.md for active planning

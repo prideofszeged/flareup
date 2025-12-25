@@ -66,6 +66,36 @@ impl HotkeyManager {
             )
             .map_err(|e| e.to_string())?;
 
+        // Auto-initialize defaults on first run
+        let count: i64 = store
+            .query_row("SELECT COUNT(*) FROM hotkeys", [], |row| row.get(0))
+            .map_err(|e| format!("Failed to count hotkeys: {}", e))?;
+
+        if count == 0 {
+            tracing::info!("First run detected, initializing default hotkeys");
+            let defaults = get_default_hotkeys();
+            for config in defaults {
+                store
+                    .execute(
+                        "INSERT INTO hotkeys (command_id, hotkey, modifiers, key)
+                         VALUES (?1, ?2, ?3, ?4)",
+                        params![
+                            &config.command_id,
+                            &config.hotkey,
+                            config.modifiers,
+                            &config.key
+                        ],
+                    )
+                    .map_err(|e| format!("Failed to insert default hotkey: {}", e))?;
+            }
+            tracing::info!(
+                "Initialized {} default hotkeys",
+                get_default_hotkeys().len()
+            );
+        } else {
+            tracing::info!("Found {} existing hotkeys", count);
+        }
+
         tracing::info!("Hotkey manager initialized");
 
         Ok(Self {
@@ -377,44 +407,6 @@ pub fn format_hotkey(modifiers: u8, key: &str) -> String {
 /// Get default hotkey configurations
 pub fn get_default_hotkeys() -> Vec<HotkeyConfig> {
     vec![
-        // Window Management - Arrow keys
-        HotkeyConfig {
-            command_id: "builtin:snap-left".to_string(),
-            hotkey: "Ctrl+Alt+←".to_string(),
-            modifiers: 1 | 2, // Ctrl + Alt
-            key: "ArrowLeft".to_string(),
-        },
-        HotkeyConfig {
-            command_id: "builtin:snap-right".to_string(),
-            hotkey: "Ctrl+Alt+→".to_string(),
-            modifiers: 1 | 2,
-            key: "ArrowRight".to_string(),
-        },
-        HotkeyConfig {
-            command_id: "builtin:snap-top".to_string(),
-            hotkey: "Ctrl+Alt+↑".to_string(),
-            modifiers: 1 | 2,
-            key: "ArrowUp".to_string(),
-        },
-        HotkeyConfig {
-            command_id: "builtin:snap-bottom".to_string(),
-            hotkey: "Ctrl+Alt+↓".to_string(),
-            modifiers: 1 | 2,
-            key: "ArrowDown".to_string(),
-        },
-        // Window Operations
-        HotkeyConfig {
-            command_id: "builtin:maximize-window".to_string(),
-            hotkey: "Ctrl+Alt+M".to_string(),
-            modifiers: 1 | 2,
-            key: "KeyM".to_string(),
-        },
-        HotkeyConfig {
-            command_id: "builtin:center-window".to_string(),
-            hotkey: "Ctrl+Alt+C".to_string(),
-            modifiers: 1 | 2,
-            key: "KeyC".to_string(),
-        },
         // System Commands
         HotkeyConfig {
             command_id: "builtin:lock-screen".to_string(),

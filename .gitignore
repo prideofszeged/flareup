@@ -11,6 +11,3 @@ vite.config.ts.timestamp-*
 
 # Chunkhound
 .chunkhound*
-
-# Documentation
-*.md

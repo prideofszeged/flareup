@@ -148,6 +148,32 @@
 		owner: 'flare'
 	};
 
+	const openLatestDownloadPlugin: PluginInfo = {
+		title: 'Open Latest Download',
+		description: 'Open the most recent download',
+		pluginTitle: 'Downloads',
+		pluginName: 'downloads',
+		commandName: 'open-latest',
+		pluginPath: 'builtin:open-latest-download',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const copyLatestDownloadPlugin: PluginInfo = {
+		title: 'Copy Latest Download',
+		description: 'Copy the most recent download path to clipboard',
+		pluginTitle: 'Downloads',
+		pluginName: 'downloads',
+		commandName: 'copy-latest',
+		pluginPath: 'builtin:copy-latest-download',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
 	const settingsPlugin: PluginInfo = {
 		title: 'Flareup Settings',
 		description: 'Configure Flareup preferences and options',
@@ -422,6 +448,8 @@
 		fileSearchPlugin,
 		aiChatPlugin,
 		downloadsPlugin,
+		openLatestDownloadPlugin,
+		copyLatestDownloadPlugin,
 		settingsPlugin,
 		// System commands
 		lockScreenPlugin,

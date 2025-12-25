@@ -227,3 +227,44 @@ pub fn downloads_clear_history() -> Result<(), String> {
         Err("Downloads manager not initialized".to_string())
     }
 }
+
+/// Get the most recent download
+#[tauri::command]
+pub fn downloads_get_latest() -> Result<Option<DownloadItem>, String> {
+    if let Some(manager) = MANAGER
+        .lock()
+        .expect("downloads manager mutex poisoned")
+        .as_ref()
+    {
+        // Get the first item sorted by created_at descending
+        manager
+            .get_items("all", None, 1, 0)
+            .map(|items| items.into_iter().next())
+            .map_err(|e| e.to_string())
+    } else {
+        Err("Downloads manager not initialized".to_string())
+    }
+}
+
+/// Copy the latest download path to clipboard
+#[tauri::command]
+pub fn downloads_copy_latest() -> Result<String, String> {
+    if let Some(manager) = MANAGER
+        .lock()
+        .expect("downloads manager mutex poisoned")
+        .as_ref()
+    {
+        match manager.get_items("all", None, 1, 0) {
+            Ok(items) => {
+                if let Some(item) = items.first() {
+                    Ok(item.path.clone())
+                } else {
+                    Err("No downloads found".to_string())
+                }
+            }
+            Err(e) => Err(e.to_string()),
+        }
+    } else {
+        Err("Downloads manager not initialized".to_string())
+    }
+}

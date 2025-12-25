@@ -668,6 +668,8 @@ pub fn run() {
             downloads::downloads_delete_item,
             downloads::downloads_delete_file,
             downloads::downloads_clear_history,
+            downloads::downloads_get_latest,
+            downloads::downloads_copy_latest,
             extensions::get_extension_compatibility,
             extensions::get_all_extensions_compatibility,
             extensions::uninstall_extension,

@@ -133,6 +133,33 @@ class ViewManager {
 			case 'builtin:downloads':
 				this.showDownloads();
 				return;
+			case 'builtin:open-latest-download':
+				try {
+					const latest = await invoke<{ name: string; path: string } | null>('downloads_get_latest');
+					if (latest) {
+						await invoke('downloads_open_file', { path: latest.path });
+						await invoke('show_hud', { title: `Opened: ${latest.name}` });
+					} else {
+						await invoke('show_hud', { title: 'No downloads found' });
+					}
+				} catch (error) {
+					console.error('[ERROR] Open latest download failed:', error);
+					await invoke('show_hud', { title: 'Failed to open download' });
+				}
+				return;
+			case 'builtin:copy-latest-download':
+				try {
+					const path = await invoke<string>('downloads_copy_latest');
+					// Copy to clipboard
+					await invoke('clipboard_copy', { text: path });
+					// Extract filename from path for display
+					const filename = path.split('/').pop() || path;
+					await invoke('show_hud', { title: `Copied: ${filename}` });
+				} catch (error) {
+					console.error('[ERROR] Copy latest download failed:', error);
+					await invoke('show_hud', { title: 'No downloads found' });
+				}
+				return;
 			case 'builtin:settings':
 				this.showSettings();
 				return;
