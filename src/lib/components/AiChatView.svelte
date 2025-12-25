@@ -2,7 +2,17 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen } from '@tauri-apps/api/event';
 	import { tick, onMount } from 'svelte';
-	import { Loader2, Send, Stars, MessageSquare, Plus } from '@lucide/svelte';
+	import {
+		Loader2,
+		Send,
+		Stars,
+		MessageSquare,
+		Plus,
+		List,
+		Trash2,
+		ChevronLeft,
+		ChevronRight
+	} from '@lucide/svelte';
 	import { focusManager } from '$lib/focus.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
 	import HeaderInput from './HeaderInput.svelte';
@@ -195,6 +205,38 @@
 	function clearChat() {
 		newChat();
 	}
+
+	async function deleteConversation(id: string) {
+		try {
+			await invoke('delete_conversation', { id });
+			conversations = conversations.filter((c) => c.id !== id);
+			if (currentConversationId === id) {
+				newChat();
+			}
+		} catch (error) {
+			console.error('Failed to delete conversation:', error);
+		}
+	}
+
+	function toggleSidebar() {
+		showSidebar = !showSidebar;
+	}
+
+	function formatDate(timestamp: number): string {
+		const date = new Date(timestamp);
+		const now = new Date();
+		const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+		if (diffDays === 0) {
+			return 'Today';
+		} else if (diffDays === 1) {
+			return 'Yesterday';
+		} else if (diffDays < 7) {
+			return `${diffDays} days ago`;
+		} else {
+			return date.toLocaleDateString();
+		}
+	}
 </script>
 
 <MainLayout>
@@ -217,43 +259,120 @@
 	{/snippet}
 
 	{#snippet content()}
-		<div
-			bind:this={scrollContainer}
-			class="flex grow flex-col gap-6 overflow-y-auto scroll-smooth p-6"
-		>
-			{#if messages.length === 0}
-				<div class="flex h-full flex-col items-center justify-center text-center">
-					<div class="bg-primary/10 mb-4 rounded-2xl p-4">
-						<Stars class="text-primary size-12" />
-					</div>
-					<h2 class="text-2xl font-semibold">How can I help you today?</h2>
-					<p class="text-muted-foreground mt-2 max-w-sm">
-						Ask anything, from coding questions to general knowledge. Press Ctrl+, to configure.
-					</p>
-				</div>
-			{:else}
-				{#each messages as message}
-					<div
-						class="flex flex-col gap-2 {message.role === 'user'
-							? 'ml-12 items-end'
-							: 'mr-12 items-start'}"
-					>
-						<div
-							class="rounded-2xl px-4 py-3 text-sm leading-relaxed {message.role === 'user'
-								? 'bg-primary text-primary-foreground shadow-sm'
-								: 'bg-muted/50 border-border/50 border'}"
-						>
-							{#if message.role === 'assistant'}
-								<div class="prose prose-sm prose-invert max-w-none">
-									<SvelteMarked source={message.content} />
-								</div>
-							{:else}
-								{message.content}
-							{/if}
+		<div class="flex h-full">
+			<!-- Sidebar -->
+			{#if showSidebar}
+				<div class="border-border/50 flex w-64 shrink-0 flex-col border-r">
+					<!-- Sidebar header -->
+					<div class="border-border/50 flex items-center justify-between border-b p-3">
+						<span class="text-sm font-medium">Conversations</span>
+						<div class="flex gap-1">
+							<button
+								onclick={newChat}
+								class="hover:bg-accent rounded p-1.5 transition-colors"
+								title="New Chat"
+							>
+								<Plus class="size-4" />
+							</button>
+							<button
+								onclick={toggleSidebar}
+								class="hover:bg-accent rounded p-1.5 transition-colors"
+								title="Hide Sidebar"
+							>
+								<ChevronLeft class="size-4" />
+							</button>
 						</div>
 					</div>
-				{/each}
+
+					<!-- Conversation list -->
+					<div class="flex-1 overflow-y-auto">
+						{#if conversations.length === 0}
+							<div class="text-muted-foreground p-4 text-center text-sm">No conversations yet</div>
+						{:else}
+							{#each conversations as conversation}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+									onclick={() => loadConversation(conversation.id)}
+									onkeydown={(e) => e.key === 'Enter' && loadConversation(conversation.id)}
+									role="button"
+									tabindex="0"
+									class="hover:bg-accent/50 group flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-left transition-colors {currentConversationId ===
+									conversation.id
+										? 'bg-accent'
+										: ''}"
+								>
+									<MessageSquare class="text-muted-foreground mt-0.5 size-4 shrink-0" />
+									<div class="min-w-0 flex-1">
+										<div class="truncate text-sm font-medium">{conversation.title}</div>
+										<div class="text-muted-foreground text-xs">
+											{formatDate(conversation.updatedAt)}
+										</div>
+									</div>
+									<button
+										onclick={(e) => {
+											e.stopPropagation();
+											deleteConversation(conversation.id);
+										}}
+										class="text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
+										title="Delete"
+									>
+										<Trash2 class="size-4" />
+									</button>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				</div>
+			{:else}
+				<!-- Collapsed sidebar toggle -->
+				<button
+					onclick={toggleSidebar}
+					class="border-border/50 hover:bg-accent flex shrink-0 items-center border-r px-2 transition-colors"
+					title="Show Sidebar"
+				>
+					<ChevronRight class="text-muted-foreground size-4" />
+				</button>
 			{/if}
+
+			<!-- Chat area -->
+			<div
+				bind:this={scrollContainer}
+				class="flex grow flex-col gap-6 overflow-y-auto scroll-smooth p-6"
+			>
+				{#if messages.length === 0}
+					<div class="flex h-full flex-col items-center justify-center text-center">
+						<div class="bg-primary/10 mb-4 rounded-2xl p-4">
+							<Stars class="text-primary size-12" />
+						</div>
+						<h2 class="text-2xl font-semibold">How can I help you today?</h2>
+						<p class="text-muted-foreground mt-2 max-w-sm">
+							Ask anything, from coding questions to general knowledge. Press Ctrl+, to configure.
+						</p>
+					</div>
+				{:else}
+					{#each messages as message}
+						<div
+							class="flex flex-col gap-2 {message.role === 'user'
+								? 'ml-12 items-end'
+								: 'mr-12 items-start'}"
+						>
+							<div
+								class="rounded-2xl px-4 py-3 text-sm leading-relaxed {message.role === 'user'
+									? 'bg-primary text-primary-foreground shadow-sm'
+									: 'bg-muted/50 border-border/50 border'}"
+							>
+								{#if message.role === 'assistant'}
+									<div class="prose prose-sm prose-invert max-w-none">
+										<SvelteMarked source={message.content} />
+									</div>
+								{:else}
+									{message.content}
+								{/if}
+							</div>
+						</div>
+					{/each}
+				{/if}
+			</div>
 		</div>
 	{/snippet}
 

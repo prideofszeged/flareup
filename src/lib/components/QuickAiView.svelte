@@ -3,12 +3,13 @@
 	import { listen } from '@tauri-apps/api/event';
 	import { tick, onMount, onDestroy } from 'svelte';
 	import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-	import { Loader2, Copy, MessageSquare, RefreshCw, Stars } from '@lucide/svelte';
+	import { Loader2, Stars, Send } from '@lucide/svelte';
 	import SvelteMarked from 'svelte-marked';
 	import { viewManager } from '$lib/viewManager.svelte';
 	import ActionBar from './nodes/shared/ActionBar.svelte';
 	import type { ActionDefinition } from './nodes/shared/actions';
 	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
+	import { Input } from './ui/input';
 
 	type Props = {
 		prompt: string;
@@ -16,36 +17,64 @@
 		onClose: () => void;
 	};
 
+	type Message = {
+		role: 'user' | 'assistant';
+		content: string;
+	};
+
 	let { prompt, selection = '', onClose }: Props = $props();
 
-	let response = $state('');
-	let isGenerating = $state(true);
+	let messages = $state<Message[]>([]);
+	let followUpPrompt = $state('');
+	let isGenerating = $state(false);
 	let error = $state<string | null>(null);
 	let scrollContainer: HTMLElement | null = $state(null);
+	let followUpInputEl: HTMLInputElement | null = $state(null);
 	let requestId = $state('');
 	let unlistenChunk: (() => void) | null = null;
 	let unlistenEnd: (() => void) | null = null;
 
-	// Combine prompt with selection if available
-	const fullPrompt = $derived(selection ? `${prompt}\n\nSelected text:\n${selection}` : prompt);
+	// Build the full prompt for context
+	function buildContextPrompt(userMessage: string): string {
+		// For follow-ups, include conversation history
+		if (messages.length === 0) {
+			// First message - include selection if available
+			return selection ? `${userMessage}\n\nSelected text:\n${selection}` : userMessage;
+		}
 
-	async function startStream() {
-		response = '';
+		// Build context from previous messages
+		let context = messages
+			.map((m) => (m.role === 'user' ? `User: ${m.content}` : `Assistant: ${m.content}`))
+			.join('\n\n');
+
+		return `${context}\n\nUser: ${userMessage}`;
+	}
+
+	async function askQuestion(userMessage: string) {
+		if (!userMessage.trim()) return;
+		if (isGenerating) return;
+
+		// Add user message to history
+		messages = [...messages, { role: 'user', content: userMessage }];
+
+		// Add placeholder for assistant
+		messages = [...messages, { role: 'assistant', content: '' }];
+
 		error = null;
 		isGenerating = true;
 		requestId = Date.now().toString();
-		console.log('[QuickAI] Starting stream with requestId:', requestId, 'prompt:', fullPrompt);
+
+		const contextPrompt = buildContextPrompt(userMessage);
 
 		try {
 			await invoke('ai_ask_stream', {
 				requestId,
-				prompt: fullPrompt,
+				prompt: contextPrompt,
 				options: {
 					model: 'default',
 					creativity: 'medium'
 				}
 			});
-			console.log('[QuickAI] ai_ask_stream invoke completed');
 		} catch (e) {
 			console.error('[QuickAI] ai_ask_stream error:', e);
 			error = String(e);
@@ -53,44 +82,57 @@
 		}
 	}
 
-	async function copyResponse() {
-		if (response) {
-			await writeText(response);
+	async function handleFollowUp() {
+		if (!followUpPrompt.trim() || isGenerating) return;
+		const question = followUpPrompt.trim();
+		followUpPrompt = '';
+		await askQuestion(question);
+	}
+
+	async function copyAllResponses() {
+		const allContent = messages
+			.filter((m) => m.role === 'assistant')
+			.map((m) => m.content)
+			.join('\n\n---\n\n');
+
+		if (allContent) {
+			await writeText(allContent);
 			await invoke('show_hud', { title: 'Copied to clipboard' });
 		}
 	}
 
 	async function openInChat() {
-		// Save the conversation state for AI Chat to pick up
-		// Keep the prompt/selection and save the response
-		viewManager.quickAiResponse = response;
-		// Navigate directly to AI chat
+		// Save the full conversation for AI Chat
+		viewManager.quickAiPrompt = prompt;
+		viewManager.quickAiSelection = selection;
+		// Combine all assistant responses
+		viewManager.quickAiResponse = messages
+			.filter((m) => m.role === 'assistant')
+			.map((m) => m.content)
+			.join('\n\n');
 		viewManager.showAiChat();
-	}
-
-	async function regenerate() {
-		await startStream();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			onClose();
-		} else if (e.key === 'Enter' && !isGenerating) {
-			e.preventDefault();
-			copyResponse();
 		} else if (e.key === 'o' && e.ctrlKey) {
 			e.preventDefault();
 			openInChat();
-		} else if (e.key === 'r' && e.ctrlKey) {
-			e.preventDefault();
-			regenerate();
 		}
 	}
 
-	// Auto-scroll to bottom when response updates
+	function handleInputKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			handleFollowUp();
+		}
+	}
+
+	// Auto-scroll to bottom when messages change
 	$effect(() => {
-		if (response && scrollContainer) {
+		if (messages.length > 0 && scrollContainer) {
 			tick().then(() => {
 				if (scrollContainer) {
 					scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -99,19 +141,23 @@
 		}
 	});
 
+	// Focus follow-up input when generation completes
+	$effect(() => {
+		if (!isGenerating && followUpInputEl) {
+			tick().then(() => followUpInputEl?.focus());
+		}
+	});
+
 	onMount(async () => {
 		// Set up event listeners for streaming
-		console.log('[QuickAI] Setting up event listeners');
 		const chunkUnlisten = await listen<{ requestId: string; text: string }>(
 			'ai-stream-chunk',
 			(event) => {
-				console.log(
-					'[QuickAI] Received chunk:',
-					event.payload.requestId,
-					event.payload.text.substring(0, 50)
-				);
 				if (event.payload.requestId === requestId || requestId === '') {
-					response += event.payload.text;
+					// Update the last assistant message
+					if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+						messages[messages.length - 1].content += event.payload.text;
+					}
 				}
 			}
 		);
@@ -119,16 +165,14 @@
 
 		const endUnlisten = await listen<{ requestId: string; fullText: string }>(
 			'ai-stream-end',
-			(event) => {
-				console.log('[QuickAI] Stream ended:', event.payload.requestId);
+			() => {
 				isGenerating = false;
 			}
 		);
 		unlistenEnd = endUnlisten;
 
-		// Start the AI stream
-		console.log('[QuickAI] Calling startStream');
-		startStream();
+		// Start the initial stream with the original prompt
+		askQuestion(prompt);
 	});
 
 	onDestroy(() => {
@@ -139,11 +183,11 @@
 	const actions: ActionDefinition[] = $derived.by(() => {
 		const result: ActionDefinition[] = [];
 
-		if (!isGenerating && response) {
+		if (!isGenerating && messages.some((m) => m.role === 'assistant' && m.content)) {
 			result.push({
-				title: 'Copy Response',
-				shortcut: { key: 'Enter', modifiers: [] },
-				handler: copyResponse
+				title: 'Copy All Responses',
+				shortcut: { key: 'c', modifiers: ['ctrl', 'shift'] },
+				handler: copyAllResponses
 			});
 		}
 
@@ -152,14 +196,6 @@
 			shortcut: { key: 'o', modifiers: ['ctrl'] },
 			handler: openInChat
 		});
-
-		if (!isGenerating) {
-			result.push({
-				title: 'Regenerate',
-				shortcut: { key: 'r', modifiers: ['ctrl'] },
-				handler: regenerate
-			});
-		}
 
 		result.push({
 			title: 'Close',
@@ -185,36 +221,75 @@
 		border-radius: 8px;
 	"
 >
-	<!-- Header showing the prompt -->
+	<!-- Header -->
 	<div class="border-border/50 flex items-center gap-2 border-b px-4 py-3">
 		<div class="bg-primary/10 rounded-lg p-1.5">
 			<Stars class="text-primary size-4" />
 		</div>
 		<div class="min-w-0 flex-1">
 			<div class="truncate text-sm font-medium">Quick AI</div>
-			<div class="text-muted-foreground truncate text-xs">{prompt}</div>
+			<div class="text-muted-foreground truncate text-xs">
+				{messages.length > 2 ? `${Math.floor(messages.length / 2)} messages` : prompt}
+			</div>
 		</div>
 		{#if isGenerating}
 			<Loader2 class="text-muted-foreground size-4 animate-spin" />
 		{/if}
 	</div>
 
-	<!-- Response area -->
-	<div bind:this={scrollContainer} class="flex-1 overflow-y-auto p-4">
+	<!-- Messages area -->
+	<div bind:this={scrollContainer} class="flex-1 space-y-4 overflow-y-auto p-4">
 		{#if error}
 			<div class="text-destructive text-sm">
 				{error}
 			</div>
-		{:else if response}
-			<div class="prose prose-sm prose-invert max-w-none">
-				<SvelteMarked source={response} />
-			</div>
-		{:else if isGenerating}
-			<div class="text-muted-foreground flex items-center gap-2 text-sm">
-				<Loader2 class="size-4 animate-spin" />
-				Thinking...
-			</div>
+		{:else}
+			{#each messages as message}
+				<div class="flex flex-col gap-1 {message.role === 'user' ? 'items-end' : 'items-start'}">
+					<div
+						class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm {message.role === 'user'
+							? 'bg-primary text-primary-foreground'
+							: 'bg-muted/50 border-border/50 border'}"
+					>
+						{#if message.role === 'assistant'}
+							{#if message.content}
+								<div class="prose prose-sm prose-invert max-w-none">
+									<SvelteMarked source={message.content} />
+								</div>
+							{:else if isGenerating}
+								<div class="text-muted-foreground flex items-center gap-2">
+									<Loader2 class="size-3 animate-spin" />
+									<span>Thinking...</span>
+								</div>
+							{/if}
+						{:else}
+							{message.content}
+						{/if}
+					</div>
+				</div>
+			{/each}
 		{/if}
+	</div>
+
+	<!-- Follow-up input -->
+	<div class="border-border/50 border-t px-4 py-3">
+		<div class="flex items-center gap-2">
+			<Input
+				bind:ref={followUpInputEl}
+				bind:value={followUpPrompt}
+				placeholder={isGenerating ? 'Wait for response...' : 'Ask a follow-up question...'}
+				disabled={isGenerating}
+				class="flex-1"
+				onkeydown={handleInputKeydown}
+			/>
+			<button
+				onclick={handleFollowUp}
+				disabled={isGenerating || !followUpPrompt.trim()}
+				class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground rounded-lg p-2 transition-colors"
+			>
+				<Send class="size-4" />
+			</button>
+		</div>
 	</div>
 
 	<!-- Action bar -->
