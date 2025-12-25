@@ -156,9 +156,18 @@
 		}
 	});
 
-	function handleSave() {
+	let isSaving = $state(false);
+
+	async function handleSave() {
 		if (selectedItem) {
-			onSavePreferences(selectedItem.data.pluginName, preferenceValues);
+			isSaving = true;
+			try {
+				onSavePreferences(selectedItem.data.pluginName, preferenceValues);
+				// Show HUD feedback
+				await invoke('show_hud', { title: 'Settings saved' });
+			} finally {
+				isSaving = false;
+			}
 		}
 	}
 
@@ -279,7 +288,9 @@
 						{#if selectedItem.type === 'extension'}
 							<Button variant="destructive" onclick={handleUninstall}>Uninstall</Button>
 						{/if}
-						<Button onclick={handleSave}>Save</Button>
+						<Button onclick={handleSave} disabled={isSaving}>
+							{isSaving ? 'Saving...' : 'Save'}
+						</Button>
 					</div>
 				</div>
 				{#if selectedWarnings.length > 0}

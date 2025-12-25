@@ -18,6 +18,9 @@ export class PreferencesStore {
 			if (fs.existsSync(this.preferencesPath)) {
 				const data = fs.readFileSync(this.preferencesPath, 'utf-8');
 				this.preferences = JSON.parse(data);
+				writeLog(`Loaded preferences from ${this.preferencesPath}: ${JSON.stringify(this.preferences)}`);
+			} else {
+				writeLog(`Preferences file not found at ${this.preferencesPath}`);
 			}
 		} catch (error) {
 			writeLog(`Error loading preferences: ${error}`);
@@ -30,6 +33,7 @@ export class PreferencesStore {
 			const dir = path.dirname(this.preferencesPath);
 			fs.mkdirSync(dir, { recursive: true });
 			fs.writeFileSync(this.preferencesPath, JSON.stringify(this.preferences, null, 2));
+			writeLog(`Saved preferences to ${this.preferencesPath}: ${JSON.stringify(this.preferences)}`);
 		} catch (error) {
 			writeLog(`Error saving preferences: ${error}`);
 		}
