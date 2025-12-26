@@ -2,6 +2,7 @@ mod ai;
 mod ai_presets;
 mod aliases;
 mod app;
+mod script_commands;
 mod auto_start;
 mod browser_extension;
 mod cache;
@@ -38,6 +39,7 @@ use ai_presets::AiPresetManager;
 use aliases::AliasManager;
 use browser_extension::WsState;
 use frecency::FrecencyManager;
+use script_commands::ScriptCommandManager;
 use quicklinks::QuicklinkManager;
 use selection::get_text;
 use snippets::engine::ExpansionEngine;
@@ -657,6 +659,9 @@ pub fn run() {
             aliases::get_aliases,
             aliases::set_alias,
             aliases::remove_alias,
+            script_commands::get_script_commands,
+            script_commands::run_script_command,
+            script_commands::open_scripts_folder,
             system_commands::execute_power_command,
             system_commands::set_volume,
             system_commands::volume_up,
@@ -704,6 +709,7 @@ pub fn run() {
             app.manage(AiUsageManager::new(app.handle())?);
             app.manage(AiPresetManager::new(app.handle())?);
             app.manage(AliasManager::new(app.handle())?);
+            app.manage(ScriptCommandManager::new(app.handle()));
             app.manage(settings::SettingsManager::new(app.handle())?);
 
             // Initialize hotkey manager

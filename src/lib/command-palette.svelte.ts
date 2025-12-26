@@ -8,9 +8,17 @@ import { viewManager } from './viewManager.svelte';
 import type { App } from './apps.svelte';
 import { aiStore, type AiPreset } from './ai.svelte';
 import { aliasesStore } from './aliases.svelte';
+import { scriptCommandsStore, type ScriptCommand } from './script-commands.svelte';
 
 export type UnifiedItem = {
-	type: 'calculator' | 'plugin' | 'app' | 'quicklink' | 'ai-preset' | 'ask-ai';
+	type:
+		| 'calculator'
+		| 'plugin'
+		| 'app'
+		| 'quicklink'
+		| 'ai-preset'
+		| 'ask-ai'
+		| 'script-command';
 	id: string;
 	data: any;
 	score: number;
@@ -35,7 +43,7 @@ export function useCommandPaletteItems({
 }: UseCommandPaletteItemsArgs) {
 	const allSearchableItems = $derived.by(() => {
 		const items: {
-			type: 'plugin' | 'app' | 'quicklink' | 'ai-preset';
+			type: 'plugin' | 'app' | 'quicklink' | 'ai-preset' | 'script-command';
 			id: string;
 			data: any;
 		}[] = [];
@@ -47,6 +55,16 @@ export function useCommandPaletteItems({
 		items.push(
 			...aiStore.presets.map(
 				(p) => ({ type: 'ai-preset', id: `ai-preset-${p.id}`, data: p }) as const
+			)
+		);
+		items.push(
+			...scriptCommandsStore.commands.map(
+				(c) =>
+					({
+						type: 'script-command',
+						id: `script-${c.path}`,
+						data: c
+					}) as const
 			)
 		);
 		return items;
@@ -267,6 +285,29 @@ export function useCommandPaletteActions({
 			}
 			case 'ask-ai': {
 				viewManager.showAiChat(item.data.query);
+				break;
+			}
+			case 'script-command': {
+				const command = item.data as ScriptCommand;
+				// TODO: Handle arguments
+				// For now, assume no args or handle interactively
+                if (command.arguments.length > 0) {
+                    // Logic to prompt for args would go here
+                    // Similar to quicklinks with arguments
+                    console.log('Script has arguments, not fully implemented in UI yet');
+                } else {
+                    const result = await scriptCommandsStore.runCommand(command, []);
+                    if (command.mode === 'fullOutput') {
+                        // Show output view
+                        // viewManager.showScriptOutput(result);
+						// For MVP, just use HUD or clipboard if needed, or simple alert
+						alert(result);
+                    } else if (command.mode === 'compact') {
+                        await invoke('show_hud', { title: result });
+                    } else if (command.mode === 'inline') {
+                        await invoke('clipboard_paste', { text: result });
+                    }
+                }
 				break;
 			}
 		}

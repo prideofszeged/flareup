@@ -273,6 +273,20 @@
 							{isSelected}
 							{onclick}
 						/>
+					{:else if item.type === 'script-command'}
+						<ListItemBase
+							title={item.data.title}
+							subtitle={item.data.packageName ?? 'Script'}
+							icon={item.data.icon ?? 'terminal-16'}
+							{isSelected}
+							{onclick}
+						>
+							{#snippet accessories()}
+								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
+									Script
+								</span>
+							{/snippet}
+						</ListItemBase>
 					{/if}
 				{/snippet}
 			</BaseList>

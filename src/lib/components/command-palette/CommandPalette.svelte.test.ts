@@ -51,6 +51,13 @@ vi.mock('$lib/ai.svelte', () => ({
 	aiStore
 }));
 
+const scriptCommandsStore = vi.hoisted(() => ({
+	commands: [] as any[]
+}));
+vi.mock('$lib/script-commands.svelte', () => ({
+	scriptCommandsStore
+}));
+
 describe('CommandPalette.svelte', () => {
 	const onRunPlugin = vi.fn();
 	const user = userEvent.setup();
