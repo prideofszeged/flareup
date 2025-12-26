@@ -124,7 +124,7 @@
 	};
 
 	const aiChatPlugin: PluginInfo = {
-		title: 'Ask AI',
+		title: 'AI Chat',
 		description: 'Chat with AI to answer questions, write code, and more',
 		pluginTitle: 'AI',
 		pluginName: 'ai',

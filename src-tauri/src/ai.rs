@@ -325,6 +325,9 @@ impl AiUsageManager {
         // Initialize AI commands table
         store.init_table(crate::ai_commands::AI_COMMANDS_SCHEMA)?;
 
+        // Initialize AI presets table
+        store.init_table(crate::ai_presets::AI_PRESETS_SCHEMA)?;
+
         // Add indices for performance
         store.execute(
             "CREATE INDEX IF NOT EXISTS idx_ai_generations_created ON ai_generations(created)",
@@ -439,6 +442,64 @@ impl AiUsageManager {
                     hotkey: row.get(7)?,
                     created_at: row.get(8)?,
                     updated_at: row.get(9)?,
+                })
+            })
+            .ok();
+
+        Ok(result)
+    }
+
+    /// Query all AI presets
+    pub fn query_ai_presets(&self) -> Result<Vec<crate::ai_presets::AiPreset>, AppError> {
+        let conn = self.store.conn();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, icon, model, temperature, system_prompt, web_search, created_at, updated_at FROM ai_presets ORDER BY name ASC"
+        )?;
+
+        let presets = stmt
+            .query_map([], |row| {
+                let web_search: i32 = row.get(6)?;
+                Ok(crate::ai_presets::AiPreset {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    model: row.get(3)?,
+                    temperature: row.get(4)?,
+                    system_prompt: row.get(5)?,
+                    web_search: web_search != 0,
+                    created_at: row.get(7)?,
+                    updated_at: row.get(8)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(presets)
+    }
+
+    /// Get a single AI preset by ID
+    pub fn get_ai_preset_by_id(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::ai_presets::AiPreset>, AppError> {
+        let conn = self.store.conn();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, icon, model, temperature, system_prompt, web_search, created_at, updated_at FROM ai_presets WHERE id = ?1"
+        )?;
+
+        let result = stmt
+            .query_row(params![id], |row| {
+                let web_search: i32 = row.get(6)?;
+                Ok(crate::ai_presets::AiPreset {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    model: row.get(3)?,
+                    temperature: row.get(4)?,
+                    system_prompt: row.get(5)?,
+                    web_search: web_search != 0,
+                    created_at: row.get(7)?,
+                    updated_at: row.get(8)?,
                 })
             })
             .ok();

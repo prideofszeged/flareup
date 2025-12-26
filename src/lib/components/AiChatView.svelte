@@ -41,6 +41,16 @@
 		messages: Message[];
 	};
 
+	type AiPreset = {
+		id: string;
+		name: string;
+		icon: string | null;
+		model: string | null;
+		temperature: number | null;
+		systemPrompt: string | null;
+		webSearch: boolean;
+	};
+
 	let { onBack }: Props = $props();
 
 	let currentConversationId = $state<string | null>(null);
@@ -51,6 +61,11 @@
 	let showSidebar = $state(true);
 	let searchInputEl: HTMLInputElement | null = $state(null);
 	let scrollContainer: HTMLElement | null = $state(null);
+
+	// Presets
+	let presets = $state<AiPreset[]>([]);
+	let selectedPreset = $state<AiPreset | null>(null);
+	let showPresetDropdown = $state(false);
 
 	$effect(() => {
 		if (focusManager.activeScope === 'main-input') {
@@ -87,9 +102,11 @@
 		try {
 			await invoke('ai_ask_stream', {
 				requestId: assistantMessageId,
-				prompt: userMessage,
+				prompt: selectedPreset?.systemPrompt
+					? `${selectedPreset.systemPrompt}\n\nUser: ${userMessage}`
+					: userMessage,
 				options: {
-					model: 'default',
+					model: selectedPreset?.model || 'default',
 					creativity: 'medium'
 				}
 			});
@@ -124,7 +141,16 @@
 	function newChat() {
 		messages = [];
 		currentConversationId = null;
+		selectedPreset = null;
 		searchInputEl?.focus();
+	}
+
+	async function loadPresets() {
+		try {
+			presets = await invoke<AiPreset[]>('list_ai_presets');
+		} catch (error) {
+			console.error('Failed to load presets:', error);
+		}
 	}
 
 	onMount(() => {
@@ -147,6 +173,7 @@
 		}
 
 		loadConversations();
+		loadPresets();
 
 		const unlistenChunk = listen<{ request_id: string; text: string }>(
 			'ai-stream-chunk',
@@ -253,6 +280,60 @@
 			{#if isGenerating}
 				<div class="mr-4">
 					<Loader2 class="text-muted-foreground size-4 animate-spin" />
+				</div>
+			{/if}
+
+			<!-- Preset Selector -->
+			{#if presets.length > 0}
+				<div class="relative mr-2">
+					<button
+						type="button"
+						onclick={() => (showPresetDropdown = !showPresetDropdown)}
+						class="border-input bg-background hover:bg-accent flex h-8 items-center gap-1 rounded-md border px-2 text-xs transition-colors"
+						title="Select AI Preset"
+					>
+						<Stars class="size-3" />
+						<span class="max-w-24 truncate">{selectedPreset?.name || 'No preset'}</span>
+						<svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</button>
+					{#if showPresetDropdown}
+						<div class="bg-popover absolute right-0 z-50 mt-1 w-48 rounded-md border shadow-lg">
+							<button
+								type="button"
+								class="hover:bg-accent w-full px-3 py-2 text-left text-sm {!selectedPreset
+									? 'bg-accent'
+									: ''}"
+								onclick={() => {
+									selectedPreset = null;
+									showPresetDropdown = false;
+								}}
+							>
+								No preset
+							</button>
+							{#each presets as preset}
+								<button
+									type="button"
+									class="hover:bg-accent w-full px-3 py-2 text-left text-sm {selectedPreset?.id ===
+									preset.id
+										? 'bg-accent'
+										: ''}"
+									onclick={() => {
+										selectedPreset = preset;
+										showPresetDropdown = false;
+									}}
+								>
+									{preset.name}
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</Header>

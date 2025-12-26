@@ -3,6 +3,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import AiSettingsView from './AiSettingsView.svelte';
 	import AiCommandsSettings from './settings/AiCommandsSettings.svelte';
+	import AiPresetsSettings from './settings/AiPresetsSettings.svelte';
 	import HotkeysSettings from './HotkeysSettings.svelte';
 	import ExtensionsSettings from './settings/ExtensionsSettings.svelte';
 	import GeneralSettings from './settings/GeneralSettings.svelte';
@@ -86,6 +87,7 @@
 			<Tabs.Trigger value="extensions">Extensions</Tabs.Trigger>
 			<Tabs.Trigger value="hotkeys">Hotkeys</Tabs.Trigger>
 			<Tabs.Trigger value="ai-commands">AI Commands</Tabs.Trigger>
+			<Tabs.Trigger value="ai-presets">AI Presets</Tabs.Trigger>
 			<Tabs.Trigger value="ai">AI Settings</Tabs.Trigger>
 			<Tabs.Trigger value="advanced">Advanced</Tabs.Trigger>
 			<Tabs.Trigger value="about">About</Tabs.Trigger>
@@ -116,6 +118,10 @@
 
 		<Tabs.Content value="ai-commands" class="h-full">
 			<AiCommandsSettings />
+		</Tabs.Content>
+
+		<Tabs.Content value="ai-presets" class="h-full">
+			<AiPresetsSettings />
 		</Tabs.Content>
 
 		<Tabs.Content value="ai">

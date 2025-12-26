@@ -1,5 +1,6 @@
 mod ai;
 mod ai_commands;
+mod ai_presets;
 mod app;
 mod auto_start;
 mod browser_extension;
@@ -735,7 +736,12 @@ pub fn run() {
             ai_commands::update_ai_command,
             ai_commands::delete_ai_command,
             ai_commands::substitute_placeholders,
-            ai_commands::get_available_placeholders
+            ai_commands::get_available_placeholders,
+            ai_presets::create_ai_preset,
+            ai_presets::list_ai_presets,
+            ai_presets::get_ai_preset,
+            ai_presets::update_ai_preset,
+            ai_presets::delete_ai_preset
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
