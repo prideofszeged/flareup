@@ -51,6 +51,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
+use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder};
 
 use dmenu::DmenuSession;
 
@@ -761,6 +762,41 @@ pub fn run() {
                 .join("SoulverWrapper/Vendor/SoulverCore-linux");
 
             soulver::initialize(soulver_core_path.to_str().unwrap());
+
+            let quit_i = MenuItem::with_id(app.handle(), "quit", "Quit", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app.handle(), "show", "Show Flare", true, None::<&str>)?;
+            let menu = Menu::with_items(app.handle(), &[&show_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .icon(app.default_window_icon().unwrap().clone())
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app.handle())?;
 
             Ok(())
         })
