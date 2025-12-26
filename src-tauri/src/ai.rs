@@ -322,6 +322,9 @@ impl AiUsageManager {
         store.init_table(AI_USAGE_SCHEMA)?;
         store.init_table(AI_CONVERSATIONS_SCHEMA)?;
 
+        // Initialize AI commands table
+        store.init_table(crate::ai_commands::AI_COMMANDS_SCHEMA)?;
+
         // Add indices for performance
         store.execute(
             "CREATE INDEX IF NOT EXISTS idx_ai_generations_created ON ai_generations(created)",
@@ -358,6 +361,89 @@ impl AiUsageManager {
             "SELECT id, created, model, tokens_prompt, tokens_completion, native_tokens_prompt, native_tokens_completion, total_cost FROM ai_generations ORDER BY created DESC LIMIT ?1 OFFSET ?2",
             params![limit, offset],
         )
+    }
+
+    /// Execute a command on the store (for AI commands table)
+    pub fn execute_command<P: rusqlite::Params>(
+        &self,
+        sql: &str,
+        params: P,
+    ) -> Result<usize, AppError> {
+        self.store.execute(sql, params)
+    }
+
+    /// Query all AI commands
+    pub fn query_ai_commands(&self) -> Result<Vec<crate::ai_commands::AiCommand>, AppError> {
+        let conn = self.store.conn();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, icon, prompt_template, model, output_action, creativity, hotkey, created_at, updated_at FROM ai_commands ORDER BY name ASC"
+        )?;
+
+        let commands = stmt
+            .query_map([], |row| {
+                let output_action_str: Option<String> = row.get(5)?;
+                let output_action = match output_action_str.as_deref() {
+                    Some("open_chat") => crate::ai_commands::OutputAction::OpenChat,
+                    Some("copy") => crate::ai_commands::OutputAction::CopyToClipboard,
+                    Some("paste") => crate::ai_commands::OutputAction::PasteInPlace,
+                    _ => crate::ai_commands::OutputAction::QuickAi,
+                };
+
+                Ok(crate::ai_commands::AiCommand {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    prompt_template: row.get(3)?,
+                    model: row.get(4)?,
+                    creativity: row.get(6)?,
+                    output_action,
+                    hotkey: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(commands)
+    }
+
+    /// Get a single AI command by ID
+    pub fn get_ai_command_by_id(
+        &self,
+        id: &str,
+    ) -> Result<Option<crate::ai_commands::AiCommand>, AppError> {
+        let conn = self.store.conn();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, icon, prompt_template, model, output_action, creativity, hotkey, created_at, updated_at FROM ai_commands WHERE id = ?1"
+        )?;
+
+        let result = stmt
+            .query_row(params![id], |row| {
+                let output_action_str: Option<String> = row.get(5)?;
+                let output_action = match output_action_str.as_deref() {
+                    Some("open_chat") => crate::ai_commands::OutputAction::OpenChat,
+                    Some("copy") => crate::ai_commands::OutputAction::CopyToClipboard,
+                    Some("paste") => crate::ai_commands::OutputAction::PasteInPlace,
+                    _ => crate::ai_commands::OutputAction::QuickAi,
+                };
+
+                Ok(crate::ai_commands::AiCommand {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    prompt_template: row.get(3)?,
+                    model: row.get(4)?,
+                    creativity: row.get(6)?,
+                    output_action,
+                    hotkey: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })
+            .ok();
+
+        Ok(result)
     }
 }
 

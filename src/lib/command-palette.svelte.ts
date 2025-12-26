@@ -8,10 +8,23 @@ import { viewManager } from './viewManager.svelte';
 import type { App } from './apps.svelte';
 
 export type UnifiedItem = {
-	type: 'calculator' | 'plugin' | 'app' | 'quicklink';
+	type: 'calculator' | 'plugin' | 'app' | 'quicklink' | 'ai-command';
 	id: string;
 	data: any;
 	score: number;
+};
+
+export type AiCommand = {
+	id: string;
+	name: string;
+	icon: string | null;
+	promptTemplate: string;
+	model: string | null;
+	creativity: string | null;
+	outputAction: string;
+	hotkey: string | null;
+	createdAt: number;
+	updatedAt: number;
 };
 
 type UseCommandPaletteItemsArgs = {
@@ -23,6 +36,26 @@ type UseCommandPaletteItemsArgs = {
 	selectedQuicklinkForArgument: () => Quicklink | null;
 };
 
+let cachedAiCommands: AiCommand[] = [];
+let aiCommandsLoaded = false;
+
+async function loadAiCommands(): Promise<AiCommand[]> {
+	if (aiCommandsLoaded) return cachedAiCommands;
+	try {
+		cachedAiCommands = await invoke<AiCommand[]>('list_ai_commands');
+		aiCommandsLoaded = true;
+	} catch (error) {
+		console.error('Failed to load AI commands:', error);
+		cachedAiCommands = [];
+	}
+	return cachedAiCommands;
+}
+
+// Refresh AI commands cache
+export function refreshAiCommandsCache() {
+	aiCommandsLoaded = false;
+}
+
 export function useCommandPaletteItems({
 	searchText,
 	plugins,
@@ -32,13 +65,22 @@ export function useCommandPaletteItems({
 	selectedQuicklinkForArgument
 }: UseCommandPaletteItemsArgs) {
 	const allSearchableItems = $derived.by(() => {
-		const items: { type: 'plugin' | 'app' | 'quicklink'; id: string; data: any }[] = [];
+		const items: { type: 'plugin' | 'app' | 'quicklink' | 'ai-command'; id: string; data: any }[] = [];
 		items.push(...plugins().map((p) => ({ type: 'plugin', id: p.pluginPath, data: p }) as const));
 		items.push(...installedApps().map((a) => ({ type: 'app', id: a.exec, data: a }) as const));
 		items.push(
 			...quicklinks().map((q) => ({ type: 'quicklink', id: `quicklink-${q.id}`, data: q }) as const)
 		);
+		// Add AI commands from cache
+		items.push(
+			...cachedAiCommands.map((c) => ({ type: 'ai-command', id: `ai-command-${c.id}`, data: c }) as const)
+		);
 		return items;
+	});
+
+	// Load AI commands on first render
+	$effect(() => {
+		loadAiCommands();
 	});
 
 	const fuse = $derived(
@@ -49,7 +91,8 @@ export function useCommandPaletteItems({
 				'data.description',
 				'data.name',
 				'data.comment',
-				'data.link'
+				'data.link',
+				'data.promptTemplate'
 			],
 			threshold: 0.4,
 			includeScore: true
@@ -169,6 +212,7 @@ export function useCommandPaletteItems({
 type UseCommandPaletteActionsArgs = {
 	selectedItem: () => UnifiedItem | undefined;
 	onRunPlugin: (plugin: PluginInfo) => void;
+	onExecuteAiCommand: (command: AiCommand) => void;
 	resetState: () => void;
 	focusArgumentInput: () => void;
 };
@@ -176,6 +220,7 @@ type UseCommandPaletteActionsArgs = {
 export function useCommandPaletteActions({
 	selectedItem,
 	onRunPlugin,
+	onExecuteAiCommand,
 	resetState,
 	focusArgumentInput
 }: UseCommandPaletteActionsArgs) {
@@ -218,6 +263,10 @@ export function useCommandPaletteActions({
 				} else {
 					executeQuicklink(quicklink);
 				}
+				break;
+			}
+			case 'ai-command': {
+				onExecuteAiCommand(item.data as AiCommand);
 				break;
 			}
 		}

@@ -1,4 +1,5 @@
 mod ai;
+mod ai_commands;
 mod app;
 mod auto_start;
 mod browser_extension;
@@ -727,7 +728,14 @@ pub fn run() {
             settings::save_app_settings,
             settings::reset_app_settings,
             auto_start::set_auto_start_enabled,
-            auto_start::get_auto_start_enabled
+            auto_start::get_auto_start_enabled,
+            ai_commands::create_ai_command,
+            ai_commands::list_ai_commands,
+            ai_commands::get_ai_command,
+            ai_commands::update_ai_command,
+            ai_commands::delete_ai_command,
+            ai_commands::substitute_placeholders,
+            ai_commands::get_available_placeholders
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -803,7 +811,7 @@ pub fn run() {
                         }
                     }
                     tauri::WindowEvent::Focused(false) => {
-                        tracing::info!("Window lost focus");
+                        tracing::debug!("Window lost focus");
                         if let Some(window) = app.get_webview_window("main") {
                             // Check if close on blur is enabled in settings
                             if let Some(settings_manager) =
@@ -811,24 +819,26 @@ pub fn run() {
                             {
                                 match settings_manager.get_settings() {
                                     Ok(settings) => {
-                                        tracing::info!(
-                                            "Close on blur setting: {}",
-                                            settings.close_on_blur
-                                        );
                                         if settings.close_on_blur {
-                                            tracing::info!("Hiding window due to close on blur");
-                                            let _ = window.hide();
+                                            // Debounce: wait a moment and check if still unfocused
+                                            // This prevents false triggers from UI interactions like
+                                            // clicking settings tabs or select dropdowns
+                                            let window_clone = window.clone();
+                                            tauri::async_runtime::spawn(async move {
+                                                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                                                // Re-check if window is still unfocused
+                                                if let Ok(focused) = window_clone.is_focused() {
+                                                    if !focused {
+                                                        tracing::debug!("Hiding window due to close on blur (after debounce)");
+                                                        let _ = window_clone.hide();
+                                                    }
+                                                }
+                                            });
                                         }
                                     }
                                     Err(e) => {
                                         tracing::error!("Failed to get settings: {}", e);
                                     }
-                                }
-                            } else {
-                                tracing::warn!("Settings manager not available");
-                                if !cfg!(debug_assertions) {
-                                    // Fallback: hide in release mode if settings not available
-                                    let _ = window.hide();
                                 }
                             }
                         }
