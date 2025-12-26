@@ -7,6 +7,7 @@ import { frecencyStore } from './frecency.svelte';
 import { viewManager } from './viewManager.svelte';
 import type { App } from './apps.svelte';
 import { aiStore, type AiPreset } from './ai.svelte';
+import { aliasesStore } from './aliases.svelte';
 
 export type UnifiedItem = {
 	type: 'calculator' | 'plugin' | 'app' | 'quicklink' | 'ai-preset' | 'ask-ai';
@@ -147,7 +148,15 @@ export function useCommandPaletteItems({
 		const now = Date.now() / 1000;
 		const gravity = 1.8;
 
+		const aliasMatch = aliasesStore.getCommandId(term.trim());
+
 		items.forEach((item) => {
+			// Check for alias match
+			if (aliasMatch && item.id === aliasMatch) {
+				item.score = 10000; // Massive boost for alias match
+				return;
+			}
+
 			const frecency = frecencyMap.get(item.id);
 			let frecencyScore = 0;
 			if (frecency) {
@@ -309,6 +318,12 @@ export function useCommandPaletteActions({
 		await frecencyStore.hideItem(item.id);
 	}
 
+	async function handleSetAlias(alias: string) {
+		const item = selectedItem();
+		if (!item) return;
+		await aliasesStore.setAlias(alias, item.id);
+	}
+
 	return {
 		executeQuicklink,
 		handleEnter,
@@ -317,6 +332,7 @@ export function useCommandPaletteActions({
 		handleConfigureCommand,
 		handleCopyAppName,
 		handleCopyAppPath,
-		handleHideApp
+		handleHideApp,
+		handleSetAlias
 	};
 }

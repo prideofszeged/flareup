@@ -1,5 +1,6 @@
 mod ai;
 mod ai_presets;
+mod aliases;
 mod app;
 mod auto_start;
 mod browser_extension;
@@ -34,6 +35,7 @@ use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputM
 use crate::{app::App, cache::AppCache};
 use ai::AiUsageManager;
 use ai_presets::AiPresetManager;
+use aliases::AliasManager;
 use browser_extension::WsState;
 use frecency::FrecencyManager;
 use quicklinks::QuicklinkManager;
@@ -652,6 +654,9 @@ pub fn run() {
             ai_presets::create_ai_preset,
             ai_presets::update_ai_preset,
             ai_presets::delete_ai_preset,
+            aliases::get_aliases,
+            aliases::set_alias,
+            aliases::remove_alias,
             system_commands::execute_power_command,
             system_commands::set_volume,
             system_commands::volume_up,
@@ -698,6 +703,7 @@ pub fn run() {
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
             app.manage(AiPresetManager::new(app.handle())?);
+            app.manage(AliasManager::new(app.handle())?);
             app.manage(settings::SettingsManager::new(app.handle())?);
 
             // Initialize hotkey manager
