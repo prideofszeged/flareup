@@ -186,6 +186,19 @@ pub struct AiSettings {
     #[serde(default = "default_temperature")]
     temperature: f64,
     model_associations: HashMap<String, String>,
+    // Tool use settings
+    #[serde(default)]
+    pub tools_enabled: bool,
+    #[serde(default)]
+    pub allowed_directories: Vec<String>,
+    #[serde(default = "default_true")]
+    pub auto_approve_safe_tools: bool,
+    #[serde(default)]
+    pub auto_approve_all_tools: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for AiSettings {
@@ -196,6 +209,10 @@ impl Default for AiSettings {
             base_url: None,
             temperature: default_temperature(),
             model_associations: HashMap::new(),
+            tools_enabled: false,
+            allowed_directories: Vec::new(),
+            auto_approve_safe_tools: true,
+            auto_approve_all_tools: false,
         }
     }
 }
@@ -261,6 +278,10 @@ pub fn set_ai_settings(app: tauri::AppHandle, settings: AiSettings) -> Result<()
         base_url: settings.base_url,
         temperature: settings.temperature,
         model_associations: HashMap::new(),
+        tools_enabled: settings.tools_enabled,
+        allowed_directories: settings.allowed_directories,
+        auto_approve_safe_tools: settings.auto_approve_safe_tools,
+        auto_approve_all_tools: settings.auto_approve_all_tools,
     };
 
     for (key, value) in settings.model_associations {

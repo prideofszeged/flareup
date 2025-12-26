@@ -15,6 +15,11 @@
 		baseUrl?: string;
 		temperature: number;
 		modelAssociations: Record<string, string>;
+		// Tool use settings
+		toolsEnabled: boolean;
+		allowedDirectories: string[];
+		autoApproveSafeTools: boolean;
+		autoApproveAllTools: boolean;
 	};
 
 	let aiEnabled = $state(false);
@@ -27,6 +32,13 @@
 	let ollamaModels = $state<string[]>([]);
 	let isLoadingModels = $state(false);
 	let isSaving = $state(false);
+
+	// Tool use settings
+	let toolsEnabled = $state(false);
+	let allowedDirectories = $state<string[]>([]);
+	let autoApproveSafeTools = $state(true);
+	let autoApproveAllTools = $state(false);
+	let newDirectory = $state('');
 
 	async function fetchOllamaModels() {
 		if (aiProvider !== 'ollama') return;
@@ -58,6 +70,11 @@
 			baseUrl = settings.baseUrl || '';
 			temperature = settings.temperature ?? 0.7;
 			modelAssociations = settings.modelAssociations ?? {};
+			// Load tool settings
+			toolsEnabled = settings.toolsEnabled ?? false;
+			allowedDirectories = settings.allowedDirectories ?? [];
+			autoApproveSafeTools = settings.autoApproveSafeTools ?? true;
+			autoApproveAllTools = settings.autoApproveAllTools ?? false;
 			if (aiProvider === 'ollama') {
 				fetchOllamaModels();
 			}
@@ -91,7 +108,11 @@
 				provider: aiProvider,
 				baseUrl: baseUrl,
 				temperature: temperature,
-				modelAssociations: modelAssociations
+				modelAssociations: modelAssociations,
+				toolsEnabled: toolsEnabled,
+				allowedDirectories: allowedDirectories,
+				autoApproveSafeTools: autoApproveSafeTools,
+				autoApproveAllTools: autoApproveAllTools
 			};
 
 			await invoke('set_ai_settings', { settings: settingsToSave });
@@ -121,6 +142,18 @@
 		await invoke('clear_ai_api_key');
 		apiKey = '';
 		await loadSettings();
+	}
+
+	function addDirectory() {
+		const dir = newDirectory.trim();
+		if (dir && !allowedDirectories.includes(dir)) {
+			allowedDirectories = [...allowedDirectories, dir];
+			newDirectory = '';
+		}
+	}
+
+	function removeDirectory(dir: string) {
+		allowedDirectories = allowedDirectories.filter((d) => d !== dir);
 	}
 
 	onMount(loadSettings);
@@ -245,6 +278,80 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- Tool Use Settings Section -->
+	<div class="border-border space-y-4 rounded-lg border p-4">
+		<div class="space-y-2">
+			<h3 class="text-lg font-medium">🛠️ AI Tool Use</h3>
+			<p class="text-muted-foreground text-sm">
+				Allow AI to read/write files, run commands, and interact with your system.
+			</p>
+		</div>
+
+		<div class="flex items-center space-x-2">
+			<Switch bind:checked={toolsEnabled} id="tools-enabled" />
+			<label for="tools-enabled" class="text-sm font-medium">Enable tool use</label>
+		</div>
+
+		{#if toolsEnabled}
+			<div class="space-y-2">
+				<h4 class="text-sm font-medium">Allowed Directories</h4>
+				<p class="text-muted-foreground text-xs">
+					The AI can only access files within these directories.
+				</p>
+				<div class="flex items-center gap-2">
+					<Input
+						bind:value={newDirectory}
+						placeholder="/home/user/projects"
+						onkeydown={(e) => e.key === 'Enter' && addDirectory()}
+						class="flex-1"
+					/>
+					<Button onclick={addDirectory} variant="secondary">Add</Button>
+				</div>
+				{#if allowedDirectories.length > 0}
+					<div class="mt-2 flex flex-wrap gap-2">
+						{#each allowedDirectories as dir}
+							<div class="bg-muted flex items-center gap-1 rounded-md px-2 py-1 text-sm">
+								<span class="font-mono text-xs">{dir}</span>
+								<button
+									type="button"
+									onclick={() => removeDirectory(dir)}
+									class="text-muted-foreground hover:text-destructive ml-1"
+								>
+									×
+								</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-muted-foreground/70 text-xs italic">
+						No directories configured. AI won't be able to access any files.
+					</p>
+				{/if}
+			</div>
+
+			<div class="space-y-3 pt-2">
+				<h4 class="text-sm font-medium">Safety Settings</h4>
+				<div class="flex items-center space-x-2">
+					<Switch bind:checked={autoApproveSafeTools} id="auto-safe" />
+					<label for="auto-safe" class="text-sm">
+						Auto-approve safe operations (read, list, search)
+					</label>
+				</div>
+				<div class="flex items-center space-x-2">
+					<Switch bind:checked={autoApproveAllTools} id="auto-all" />
+					<label for="auto-all" class="text-sm">
+						Auto-approve all operations <span class="text-destructive">(dangerous)</span>
+					</label>
+				</div>
+				<p class="text-muted-foreground text-xs">
+					Dangerous operations (write, delete, run command) will show a confirmation dialog unless
+					auto-approved.
+				</p>
+			</div>
+		{/if}
+	</div>
+
 	<div class="flex justify-end">
 		<Button onclick={saveSettings} disabled={isSaving}>
 			{isSaving ? 'Saving...' : 'Save AI Settings'}

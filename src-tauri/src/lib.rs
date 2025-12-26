@@ -1,6 +1,7 @@
 mod ai;
 mod ai_commands;
 mod ai_presets;
+mod ai_tools; // AI function calling tools
 mod app;
 mod auto_start;
 mod browser_extension;
@@ -741,7 +742,11 @@ pub fn run() {
             ai_presets::list_ai_presets,
             ai_presets::get_ai_preset,
             ai_presets::update_ai_preset,
-            ai_presets::delete_ai_preset
+            ai_presets::delete_ai_preset,
+            // AI Tools
+            ai_tools::get_ai_tool_definitions,
+            ai_tools::check_model_supports_tools,
+            ai_tools::execute_ai_tool
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
