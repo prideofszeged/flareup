@@ -251,6 +251,42 @@
 								</span>
 							{/snippet}
 						</ListItemBase>
+					{:else if item.type === 'ai-preset'}
+						<ListItemBase
+							title={item.data.name}
+							subtitle="AI Command"
+							icon={item.data.icon ?? 'stars-16'}
+							{isSelected}
+							{onclick}
+						>
+							{#snippet accessories()}
+								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
+									AI Preset
+								</span>
+							{/snippet}
+						</ListItemBase>
+					{:else if item.type === 'ask-ai'}
+						<ListItemBase
+							title="Ask AI"
+							subtitle={item.data.query}
+							icon="stars-16"
+							{isSelected}
+							{onclick}
+						/>
+					{:else if item.type === 'script-command'}
+						<ListItemBase
+							title={item.data.title}
+							subtitle={item.data.packageName ?? 'Script'}
+							icon={item.data.icon ?? 'terminal-16'}
+							{isSelected}
+							{onclick}
+						>
+							{#snippet accessories()}
+								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
+									Script
+								</span>
+							{/snippet}
+						</ListItemBase>
 					{/if}
 				{/snippet}
 			</BaseList>

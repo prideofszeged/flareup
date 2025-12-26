@@ -1,5 +1,8 @@
 mod ai;
+mod ai_presets;
+mod aliases;
 mod app;
+mod script_commands;
 mod auto_start;
 mod browser_extension;
 mod cache;
@@ -32,8 +35,11 @@ mod window_management;
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
 use crate::{app::App, cache::AppCache};
 use ai::AiUsageManager;
+use ai_presets::AiPresetManager;
+use aliases::AliasManager;
 use browser_extension::WsState;
 use frecency::FrecencyManager;
+use script_commands::ScriptCommandManager;
 use quicklinks::QuicklinkManager;
 use selection::get_text;
 use snippets::engine::ExpansionEngine;
@@ -646,6 +652,16 @@ pub fn run() {
             ai::get_conversation,
             ai::update_conversation,
             ai::delete_conversation,
+            ai_presets::get_ai_presets,
+            ai_presets::create_ai_preset,
+            ai_presets::update_ai_preset,
+            ai_presets::delete_ai_preset,
+            aliases::get_aliases,
+            aliases::set_alias,
+            aliases::remove_alias,
+            script_commands::get_script_commands,
+            script_commands::run_script_command,
+            script_commands::open_scripts_folder,
             system_commands::execute_power_command,
             system_commands::set_volume,
             system_commands::volume_up,
@@ -691,6 +707,9 @@ pub fn run() {
             app.manage(FrecencyManager::new(app.handle())?);
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
+            app.manage(AiPresetManager::new(app.handle())?);
+            app.manage(AliasManager::new(app.handle())?);
+            app.manage(ScriptCommandManager::new(app.handle()));
             app.manage(settings::SettingsManager::new(app.handle())?);
 
             // Initialize hotkey manager
