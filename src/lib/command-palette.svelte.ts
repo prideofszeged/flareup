@@ -6,9 +6,10 @@ import type { Quicklink } from '$lib/quicklinks.svelte';
 import { frecencyStore } from './frecency.svelte';
 import { viewManager } from './viewManager.svelte';
 import type { App } from './apps.svelte';
+import { aiStore, type AiPreset } from './ai.svelte';
 
 export type UnifiedItem = {
-	type: 'calculator' | 'plugin' | 'app' | 'quicklink';
+	type: 'calculator' | 'plugin' | 'app' | 'quicklink' | 'ai-preset' | 'ask-ai';
 	id: string;
 	data: any;
 	score: number;
@@ -32,11 +33,20 @@ export function useCommandPaletteItems({
 	selectedQuicklinkForArgument
 }: UseCommandPaletteItemsArgs) {
 	const allSearchableItems = $derived.by(() => {
-		const items: { type: 'plugin' | 'app' | 'quicklink'; id: string; data: any }[] = [];
+		const items: {
+			type: 'plugin' | 'app' | 'quicklink' | 'ai-preset';
+			id: string;
+			data: any;
+		}[] = [];
 		items.push(...plugins().map((p) => ({ type: 'plugin', id: p.pluginPath, data: p }) as const));
 		items.push(...installedApps().map((a) => ({ type: 'app', id: a.exec, data: a }) as const));
 		items.push(
 			...quicklinks().map((q) => ({ type: 'quicklink', id: `quicklink-${q.id}`, data: q }) as const)
+		);
+		items.push(
+			...aiStore.presets.map(
+				(p) => ({ type: 'ai-preset', id: `ai-preset-${p.id}`, data: p }) as const
+			)
 		);
 		return items;
 	});
@@ -120,6 +130,15 @@ export function useCommandPaletteItems({
 				score: 0,
 				fuseScore: result.score
 			}));
+
+			// Add "Ask AI" fallback
+			items.push({
+				type: 'ask-ai',
+				id: 'ask-ai',
+				data: { query: term },
+				score: 0.1, // Low score to be at the bottom usually, or adjust based on preference
+				fuseScore: 1
+			});
 		} else {
 			items = allSearchableItems.map((item) => ({ ...item, score: 0, fuseScore: 1 }));
 		}
@@ -194,7 +213,10 @@ export function useCommandPaletteActions({
 		const item = selectedItem();
 		if (!item) return;
 
-		await frecencyStore.recordUsage(item.id);
+		// Don't record usage for calculator or ask-ai dynamic items if you prefer
+		if (item.type !== 'calculator' && item.type !== 'ask-ai') {
+			await frecencyStore.recordUsage(item.id);
+		}
 
 		switch (item.type) {
 			case 'calculator': {
@@ -218,6 +240,24 @@ export function useCommandPaletteActions({
 				} else {
 					executeQuicklink(quicklink);
 				}
+				break;
+			}
+			case 'ai-preset': {
+				const preset = item.data as AiPreset;
+				try {
+					const selection = await invoke<string>('get_selected_text');
+					const prompt = preset.template.replace('{selection}', selection);
+					viewManager.showAiChat(prompt);
+				} catch (e) {
+					console.error('Failed to get selection for AI preset:', e);
+					// If no selection, just open chat with template or blank?
+					// For now let's open with template
+					viewManager.showAiChat(preset.template);
+				}
+				break;
+			}
+			case 'ask-ai': {
+				viewManager.showAiChat(item.data.query);
 				break;
 			}
 		}

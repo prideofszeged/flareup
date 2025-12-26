@@ -96,7 +96,9 @@ class ViewManager {
 		this.currentView = 'file-search';
 	};
 
-	showAiChat = () => {
+	initialAiPrompt: string | null = null;
+	showAiChat = (initialPrompt?: string) => {
+		this.initialAiPrompt = initialPrompt ?? null;
 		this.currentView = 'ai-chat';
 	};
 

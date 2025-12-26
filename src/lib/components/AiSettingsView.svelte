@@ -8,6 +8,8 @@
 	import PasswordInput from './PasswordInput.svelte';
 	import * as Select from './ui/select';
 	import { uiStore } from '$lib/ui.svelte';
+	import AiPresetsSettings from './AiPresetsSettings.svelte';
+	import { Separator } from './ui/separator';
 
 	type AiSettings = {
 		enabled: boolean;
@@ -250,5 +252,10 @@
 			{isSaving ? 'Saving...' : 'Save AI Settings'}
 		</Button>
 	</div>
+
+	<Separator />
+
+	<AiPresetsSettings />
+
 	<div class="text-muted-foreground mt-4 text-center text-xs">Flareup v{APP_VERSION}</div>
 </div>

@@ -120,6 +120,12 @@
 	onMount(() => {
 		loadConversations();
 
+		if (viewManager.initialAiPrompt) {
+			prompt = viewManager.initialAiPrompt;
+			viewManager.initialAiPrompt = null;
+			handleSubmit();
+		}
+
 		const unlistenChunk = listen<{ request_id: string; text: string }>(
 			'ai-stream-chunk',
 			(event) => {
