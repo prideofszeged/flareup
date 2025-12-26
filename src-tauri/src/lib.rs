@@ -2,6 +2,7 @@ mod ai;
 mod ai_presets;
 mod aliases;
 mod app;
+mod floating_notes;
 mod script_commands;
 mod auto_start;
 mod browser_extension;
@@ -38,6 +39,7 @@ use ai::AiUsageManager;
 use ai_presets::AiPresetManager;
 use aliases::AliasManager;
 use browser_extension::WsState;
+use floating_notes::FloatingNotesManager;
 use frecency::FrecencyManager;
 use script_commands::ScriptCommandManager;
 use quicklinks::QuicklinkManager;
@@ -662,6 +664,9 @@ pub fn run() {
             script_commands::get_script_commands,
             script_commands::run_script_command,
             script_commands::open_scripts_folder,
+            floating_notes::get_floating_note,
+            floating_notes::save_floating_note,
+            floating_notes::toggle_floating_notes_window,
             system_commands::execute_power_command,
             system_commands::set_volume,
             system_commands::volume_up,
@@ -710,6 +715,7 @@ pub fn run() {
             app.manage(AiPresetManager::new(app.handle())?);
             app.manage(AliasManager::new(app.handle())?);
             app.manage(ScriptCommandManager::new(app.handle()));
+            app.manage(FloatingNotesManager::new(app.handle())?);
             app.manage(settings::SettingsManager::new(app.handle())?);
 
             // Initialize hotkey manager

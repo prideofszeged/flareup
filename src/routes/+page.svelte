@@ -30,6 +30,7 @@
 	import AiChatView from '$lib/components/AiChatView.svelte';
 	import DmenuView from '$lib/components/DmenuView.svelte';
 	import DownloadsView from '$lib/components/DownloadsView.svelte';
+	import FloatingNotesWindow from '$lib/components/FloatingNotesWindow.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -145,6 +146,19 @@
 		icon: fileSearchCommandIcon, // reusing file search icon for now
 		preferences: [],
 		mode: 'view',
+		owner: 'flare'
+	};
+
+	const floatingNotesPlugin: PluginInfo = {
+		title: 'Toggle Floating Notes',
+		description: 'Show/Hide the floating notes window',
+		pluginTitle: 'Notes',
+		pluginName: 'notes',
+		commandName: 'toggle-notes',
+		pluginPath: 'builtin:toggle-floating-notes',
+		icon: starsSquareIcon, // TODO: Notes icon
+		preferences: [],
+		mode: 'no-view',
 		owner: 'flare'
 	};
 
@@ -448,6 +462,7 @@
 		fileSearchPlugin,
 		aiChatPlugin,
 		downloadsPlugin,
+		floatingNotesPlugin,
 		openLatestDownloadPlugin,
 		copyLatestDownloadPlugin,
 		settingsPlugin,
@@ -486,8 +501,15 @@
 
 	let showLogViewer = $state(false);
 	let dmenuMode = $state(false);
+	let isFloatingNotesWindow = $state(false);
 
 	onMount(() => {
+		// Check if we are the floating notes window
+		if (window.location.pathname === '/floating-notes') {
+			isFloatingNotesWindow = true;
+			return;
+		}
+
 		// Listen for dmenu mode activation FIRST (before any other init)
 		const unlistenDmenu = listen('dmenu-mode', () => {
 			dmenuMode = true;
@@ -628,7 +650,9 @@
 	/>
 {/if}
 
-{#if dmenuMode}
+{#if isFloatingNotesWindow}
+	<FloatingNotesWindow />
+{:else if dmenuMode}
 	<DmenuView />
 {:else if currentView === 'command-palette'}
 	<CommandPalette plugins={allPlugins} onRunPlugin={viewManager.runPlugin} />

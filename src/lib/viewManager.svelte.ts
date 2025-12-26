@@ -241,6 +241,9 @@ class ViewManager {
 			case 'builtin:almost-maximize':
 				await invoke('snap_active_window', { position: 'almostMaximize' });
 				return;
+			case 'builtin:toggle-floating-notes':
+				await invoke('toggle_floating_notes_window');
+				return;
 		}
 
 		uiStore.setCurrentRunningPlugin(plugin);
