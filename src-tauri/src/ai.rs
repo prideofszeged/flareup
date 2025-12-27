@@ -37,6 +37,8 @@ const AI_CONVERSATIONS_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS ai_conversatio
 pub struct AskOptions {
     pub model: Option<String>,
     pub creativity: Option<String>,
+    #[serde(default)]
+    pub enable_tools: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -51,6 +53,29 @@ pub struct StreamChunk {
 pub struct StreamEnd {
     request_id: String,
     full_text: String,
+}
+
+/// Event emitted when AI requests a tool call
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallRequest {
+    pub request_id: String,
+    pub tool_call_id: String,
+    pub tool_name: String,
+    pub arguments: serde_json::Value,
+    pub safety: String, // "safe" or "dangerous"
+}
+
+/// Event emitted when a tool execution completes
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallResult {
+    pub request_id: String,
+    pub tool_call_id: String,
+    pub tool_name: String,
+    pub success: bool,
+    pub output: String,
+    pub error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -780,14 +805,26 @@ pub async fn ai_ask_stream(
 
     let model_key = options.model.unwrap_or_else(|| "default".to_string());
 
-    let model_id = settings
-        .model_associations
-        .get(&model_key)
-        .cloned()
-        .unwrap_or_else(|| match settings.provider {
-            AiProvider::OpenRouter => "mistralai/mistral-7b-instruct:free".to_string(),
-            AiProvider::Ollama => "llama3".to_string(),
-        });
+    // If a specific model ID was provided (not just "default"), use it directly
+    // Otherwise, look up from model associations or fall back to default
+    let model_id = if model_key != "default" && model_key.contains('/') || model_key.contains(':') {
+        // Looks like a specific model ID (e.g., "openai/gpt-4o" or "llama3:latest")
+        model_key.clone()
+    } else {
+        settings
+            .model_associations
+            .get(&model_key)
+            .cloned()
+            .unwrap_or_else(|| match settings.provider {
+                AiProvider::OpenRouter => "mistralai/mistral-7b-instruct:free".to_string(),
+                AiProvider::Ollama => "llama3".to_string(),
+            })
+    };
+
+    // Check if tools should be enabled
+    let use_tools = options.enable_tools
+        && settings.tools_enabled
+        && crate::ai_tools::model_supports_tools(&model_id);
 
     // Use configured temperature, allow creativity parameter to override if provided
     let temperature = match options.creativity.as_deref() {
@@ -798,12 +835,31 @@ pub async fn ai_ask_stream(
         _ => settings.temperature,
     };
 
-    let body = serde_json::json!({
+    // Build initial messages
+    let mut messages: Vec<serde_json::Value> =
+        vec![serde_json::json!({"role": "user", "content": prompt})];
+
+    // Build request body
+    let mut body = serde_json::json!({
         "model": model_id,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages.clone(),
         "stream": true,
         "temperature": temperature,
     });
+
+    // Add tools if enabled
+    if use_tools {
+        let tool_defs = crate::ai_tools::get_tool_definitions();
+        body["tools"] = serde_json::to_value(&tool_defs).unwrap_or_default();
+        tracing::info!(model = %model_id, "Tools enabled for request");
+    } else if options.enable_tools {
+        // User wanted tools but they're not available
+        tracing::warn!(model = %model_id,
+            tools_enabled = settings.tools_enabled,
+            model_supports = crate::ai_tools::model_supports_tools(&model_id),
+            "Tool use requested but not available"
+        );
+    }
 
     let (api_url, auth_header) = match settings.provider {
         AiProvider::OpenRouter => (
@@ -823,82 +879,287 @@ pub async fn ai_ask_stream(
     };
 
     let client = reqwest::Client::new();
-    let mut request = client.post(&api_url).json(&body);
 
-    if let Some(auth) = auth_header {
-        request = request.header("Authorization", auth);
-        request = request.header("HTTP-Referer", "http://localhost");
-    }
+    // Tool calling loop - may need multiple rounds
+    let max_tool_rounds = 10;
+    let mut tool_round = 0;
 
-    let res = request.send().await.map_err(|e| e.to_string())?;
+    loop {
+        tool_round += 1;
+        tracing::info!(round = tool_round, "Starting tool round");
+        if tool_round > max_tool_rounds {
+            tracing::warn!("Max tool rounds exceeded, stopping");
+            break;
+        }
 
-    let open_router_request_id = res
-        .headers()
-        .get("x-request-id")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.to_string());
+        // Update body with current messages
+        body["messages"] = serde_json::to_value(&messages).unwrap_or_default();
 
-    if !res.status().is_success() {
-        let error_body = res.text().await.unwrap_or_else(|_| "Unknown error".into());
-        return Err(format!("API Error: {}", error_body));
-    }
+        let mut request = client.post(&api_url).json(&body);
 
-    let mut stream = res.bytes_stream();
-    let mut full_text = String::new();
+        if let Some(ref auth) = auth_header {
+            request = request.header("Authorization", auth.clone());
+            request = request.header("HTTP-Referer", "http://localhost");
+        }
 
-    while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|e| e.to_string())?;
-        let lines = String::from_utf8_lossy(&chunk);
+        let res = request.send().await.map_err(|e| e.to_string())?;
 
-        for line in lines.split("\n\n").filter(|s| !s.is_empty()) {
-            if line.starts_with("data: ") {
-                let json_str = &line[6..];
-                if json_str.trim() == "[DONE]" {
-                    break;
-                }
-                if let Ok(json) = serde_json::from_str::<Value>(json_str) {
-                    if let Some(delta) = json
-                        .get("choices")
-                        .and_then(|c| c.get(0))
-                        .and_then(|c0| c0.get("delta"))
-                    {
-                        if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
-                            full_text.push_str(content);
-                            app_handle
-                                .emit(
-                                    "ai-stream-chunk",
-                                    StreamChunk {
-                                        request_id: request_id.clone(),
-                                        text: content.to_string(),
-                                    },
-                                )
-                                .map_err(|e| e.to_string())?;
+        let open_router_request_id = res
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+
+        if !res.status().is_success() {
+            let error_body = res.text().await.unwrap_or_else(|_| "Unknown error".into());
+            return Err(format!("API Error: {}", error_body));
+        }
+
+        tracing::info!("API request sent, waiting for response stream");
+
+        let mut stream = res.bytes_stream();
+        let mut full_text = String::new();
+        let mut tool_calls: Vec<serde_json::Value> = Vec::new();
+        let mut stream_done = false;
+
+        while let Some(item) = stream.next().await {
+            if stream_done {
+                break;
+            }
+            let chunk = item.map_err(|e| e.to_string())?;
+            let lines = String::from_utf8_lossy(&chunk);
+
+            for line in lines.split('\n').filter(|s| !s.is_empty()) {
+                if line.starts_with("data: ") {
+                    let json_str = &line[6..];
+                    if json_str.trim() == "[DONE]" {
+                        stream_done = true;
+                        break;
+                    }
+                    if let Ok(json) = serde_json::from_str::<Value>(json_str) {
+                        // Check for finish_reason to detect stream end
+                        if let Some(finish_reason) = json
+                            .get("choices")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c0| c0.get("finish_reason"))
+                            .and_then(|f| f.as_str())
+                        {
+                            if finish_reason == "stop" || finish_reason == "tool_calls" {
+                                tracing::debug!(finish_reason = %finish_reason, "Stream finished");
+                                stream_done = true;
+                            }
+                        }
+
+                        if let Some(delta) = json
+                            .get("choices")
+                            .and_then(|c| c.get(0))
+                            .and_then(|c0| c0.get("delta"))
+                        {
+                            // Handle text content
+                            if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
+                                full_text.push_str(content);
+                                app_handle
+                                    .emit(
+                                        "ai-stream-chunk",
+                                        StreamChunk {
+                                            request_id: request_id.clone(),
+                                            text: content.to_string(),
+                                        },
+                                    )
+                                    .map_err(|e| e.to_string())?;
+                            }
+
+                            // Handle tool calls (streaming)
+                            if let Some(tc) = delta.get("tool_calls").and_then(|t| t.as_array()) {
+                                for tool_call in tc {
+                                    let index = tool_call
+                                        .get("index")
+                                        .and_then(|i| i.as_u64())
+                                        .unwrap_or(0)
+                                        as usize;
+
+                                    // Initialize tool call if needed
+                                    while tool_calls.len() <= index {
+                                        tool_calls.push(serde_json::json!({
+                                            "id": "",
+                                            "type": "function",
+                                            "function": {
+                                                "name": "",
+                                                "arguments": ""
+                                            }
+                                        }));
+                                    }
+
+                                    // Update tool call id
+                                    if let Some(id) = tool_call.get("id").and_then(|i| i.as_str()) {
+                                        tool_calls[index]["id"] = serde_json::json!(id);
+                                    }
+
+                                    // Update function name and arguments
+                                    if let Some(func) = tool_call.get("function") {
+                                        if let Some(name) =
+                                            func.get("name").and_then(|n| n.as_str())
+                                        {
+                                            tool_calls[index]["function"]["name"] =
+                                                serde_json::json!(name);
+                                        }
+                                        // Append arguments (they come in chunks)
+                                        if let Some(args) =
+                                            func.get("arguments").and_then(|a| a.as_str())
+                                        {
+                                            let current = tool_calls[index]["function"]
+                                                ["arguments"]
+                                                .as_str()
+                                                .unwrap_or("");
+                                            tool_calls[index]["function"]["arguments"] =
+                                                serde_json::json!(format!("{}{}", current, args));
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    app_handle
-        .emit(
-            "ai-stream-end",
-            StreamEnd {
-                request_id: request_id.clone(),
-                full_text: full_text.clone(),
-            },
-        )
-        .map_err(|e| e.to_string())?;
-
-    if settings.provider == AiProvider::OpenRouter {
-        if let Some(or_req_id) = open_router_request_id {
-            let handle_clone = app_handle.clone();
-            tokio::spawn(async move {
-                if let Err(e) = fetch_and_log_usage(or_req_id, api_key, handle_clone).await {
-                    tracing::error!(error = %e, "AI usage tracking failed");
-                }
-            });
+        // Log usage for OpenRouter
+        if settings.provider == AiProvider::OpenRouter {
+            if let Some(or_req_id) = open_router_request_id {
+                let handle_clone = app_handle.clone();
+                let key_clone = api_key.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = fetch_and_log_usage(or_req_id, key_clone, handle_clone).await {
+                        tracing::error!(error = %e, "AI usage tracking failed");
+                    }
+                });
+            }
         }
+
+        // If no tool calls, we're done
+        tracing::info!(
+            tool_count = tool_calls.len(),
+            text_len = full_text.len(),
+            "Stream complete"
+        );
+        if tool_calls.is_empty() {
+            app_handle
+                .emit(
+                    "ai-stream-end",
+                    StreamEnd {
+                        request_id: request_id.clone(),
+                        full_text: full_text.clone(),
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+            break;
+        }
+
+        // Process tool calls
+        tracing::info!(count = tool_calls.len(), "Processing tool calls");
+
+        // Debug log each tool call
+        for tc in &tool_calls {
+            let name = tc
+                .get("function")
+                .and_then(|f| f.get("name"))
+                .and_then(|n| n.as_str())
+                .unwrap_or("unknown");
+            tracing::debug!(tool = %name, "Processing tool call");
+        }
+
+        // Add assistant message with tool calls
+        messages.push(serde_json::json!({
+            "role": "assistant",
+            "content": if full_text.is_empty() { serde_json::Value::Null } else { serde_json::json!(full_text) },
+            "tool_calls": tool_calls.clone()
+        }));
+
+        // Execute each tool call
+        for tc in &tool_calls {
+            let tool_call_id = tc.get("id").and_then(|i| i.as_str()).unwrap_or("");
+            let tool_name = tc
+                .get("function")
+                .and_then(|f| f.get("name"))
+                .and_then(|n| n.as_str())
+                .unwrap_or("");
+            let arguments_str = tc
+                .get("function")
+                .and_then(|f| f.get("arguments"))
+                .and_then(|a| a.as_str())
+                .unwrap_or("{}");
+
+            let arguments: serde_json::Value =
+                serde_json::from_str(arguments_str).unwrap_or(serde_json::json!({}));
+
+            // Get tool safety
+            let tool = crate::ai_tools::BuiltinTool::from_name(tool_name);
+            let safety = tool
+                .map(|t| t.safety())
+                .unwrap_or(crate::ai_tools::ToolSafety::Dangerous);
+            let safety_str = match safety {
+                crate::ai_tools::ToolSafety::Safe => "safe",
+                crate::ai_tools::ToolSafety::Dangerous => "dangerous",
+            };
+
+            // Emit tool call request event
+            app_handle
+                .emit(
+                    "ai-tool-call",
+                    ToolCallRequest {
+                        request_id: request_id.clone(),
+                        tool_call_id: tool_call_id.to_string(),
+                        tool_name: tool_name.to_string(),
+                        arguments: arguments.clone(),
+                        safety: safety_str.to_string(),
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+
+            // Execute the tool (for now, auto-execute based on settings)
+            // In the future, dangerous tools should wait for confirmation
+            let should_execute = settings.auto_approve_all_tools
+                || (settings.auto_approve_safe_tools
+                    && safety == crate::ai_tools::ToolSafety::Safe);
+
+            let tool_result = if should_execute {
+                crate::ai_tools::execute_tool(tool_name, &arguments, &settings.allowed_directories)
+            } else {
+                Err(format!(
+                    "Tool '{}' requires user confirmation (not yet implemented)",
+                    tool_name
+                ))
+            };
+
+            let (success, output, error) = match tool_result {
+                Ok(out) => (true, out, None),
+                Err(e) => (false, String::new(), Some(e)),
+            };
+
+            // Emit tool result event
+            app_handle
+                .emit(
+                    "ai-tool-result",
+                    ToolCallResult {
+                        request_id: request_id.clone(),
+                        tool_call_id: tool_call_id.to_string(),
+                        tool_name: tool_name.to_string(),
+                        success,
+                        output: output.clone(),
+                        error: error.clone(),
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+
+            // Add tool result to messages
+            messages.push(serde_json::json!({
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "content": if success { output } else { error.unwrap_or_default() }
+            }));
+        }
+
+        // Continue loop for next API call with tool results
     }
 
     Ok(())

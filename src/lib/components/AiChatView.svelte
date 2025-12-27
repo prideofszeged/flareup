@@ -11,7 +11,10 @@
 		List,
 		Trash2,
 		ChevronLeft,
-		ChevronRight
+		ChevronRight,
+		Wrench,
+		Check,
+		X
 	} from '@lucide/svelte';
 	import { focusManager } from '$lib/focus.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
@@ -28,8 +31,21 @@
 	};
 
 	type Message = {
-		role: 'user' | 'assistant';
+		role: 'user' | 'assistant' | 'tool';
 		content: string;
+		toolCalls?: ToolCall[]; // For assistant messages with tool calls
+		toolCallId?: string; // For tool result messages
+		toolName?: string; // For tool result messages
+	};
+
+	type ToolCall = {
+		id: string;
+		name: string;
+		arguments: Record<string, unknown>;
+		safety: 'safe' | 'dangerous';
+		status: 'pending' | 'running' | 'success' | 'error';
+		result?: string;
+		error?: string;
 	};
 
 	type Conversation = {
@@ -66,6 +82,17 @@
 	let presets = $state<AiPreset[]>([]);
 	let selectedPreset = $state<AiPreset | null>(null);
 	let showPresetDropdown = $state(false);
+
+	// Tool calls state
+	let pendingToolCalls = $state<Map<string, ToolCall>>(new Map());
+
+	// Model selection for tool use
+	let selectedModel = $state('default');
+	let showModelDropdown = $state(false);
+	let availableModels = $state<{ id: string; label: string }[]>([
+		{ id: 'default', label: 'Default Model' }
+	]);
+	let isLoadingModels = $state(false);
 
 	$effect(() => {
 		if (focusManager.activeScope === 'main-input') {
@@ -106,8 +133,9 @@
 					? `${selectedPreset.systemPrompt}\n\nUser: ${userMessage}`
 					: userMessage,
 				options: {
-					model: selectedPreset?.model || 'default',
-					creativity: 'medium'
+					model: selectedModel === 'default' ? selectedPreset?.model || 'default' : selectedModel,
+					creativity: 'medium',
+					enableTools: true // Enable tool use when configured
 				}
 			});
 		} catch (error) {
@@ -145,6 +173,29 @@
 		searchInputEl?.focus();
 	}
 
+	async function loadModels() {
+		isLoadingModels = true;
+		try {
+			// Try to get Ollama models
+			const ollamaModels = await invoke<string[]>('get_ollama_models', { baseUrl: '' });
+			availableModels = [
+				{ id: 'default', label: 'Default Model' },
+				...ollamaModels.map((m) => ({ id: m, label: m.replace(/:latest$/, '') }))
+			];
+		} catch (error) {
+			console.error('Failed to load Ollama models:', error);
+			// Fallback to some common models
+			availableModels = [
+				{ id: 'default', label: 'Default Model' },
+				{ id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
+				{ id: 'openai/gpt-4o', label: 'GPT-4o' },
+				{ id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' }
+			];
+		} finally {
+			isLoadingModels = false;
+		}
+	}
+
 	async function loadPresets() {
 		try {
 			presets = await invoke<AiPreset[]>('list_ai_presets');
@@ -174,6 +225,7 @@
 
 		loadConversations();
 		loadPresets();
+		loadModels();
 
 		const unlistenChunk = listen<{ request_id: string; text: string }>(
 			'ai-stream-chunk',
@@ -194,9 +246,76 @@
 			}
 		);
 
+		// Listen for tool call requests
+		const unlistenToolCall = listen<{
+			request_id: string;
+			tool_call_id: string;
+			tool_name: string;
+			arguments: Record<string, unknown>;
+			safety: string;
+		}>('ai-tool-call', (event) => {
+			const { tool_call_id, tool_name, arguments: args, safety } = event.payload;
+
+			// Add to pending tool calls
+			const toolCall: ToolCall = {
+				id: tool_call_id,
+				name: tool_name,
+				arguments: args,
+				safety: safety as 'safe' | 'dangerous',
+				status: 'running'
+			};
+			pendingToolCalls = new Map(pendingToolCalls).set(tool_call_id, toolCall);
+
+			// Add a marker message for the tool call if not already present
+			if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+				const lastMsg = messages[messages.length - 1];
+				if (!lastMsg.toolCalls) {
+					lastMsg.toolCalls = [];
+				}
+				lastMsg.toolCalls.push(toolCall);
+				messages = [...messages]; // Trigger reactivity
+			}
+		});
+
+		// Listen for tool results
+		const unlistenToolResult = listen<{
+			request_id: string;
+			tool_call_id: string;
+			tool_name: string;
+			success: boolean;
+			output: string;
+			error?: string;
+		}>('ai-tool-result', (event) => {
+			const { tool_call_id, success, output, error } = event.payload;
+
+			// Update the pending tool call
+			const toolCall = pendingToolCalls.get(tool_call_id);
+			if (toolCall) {
+				toolCall.status = success ? 'success' : 'error';
+				toolCall.result = output;
+				toolCall.error = error;
+				pendingToolCalls = new Map(pendingToolCalls);
+
+				// Update the tool call in messages too
+				for (const msg of messages) {
+					if (msg.toolCalls) {
+						const tc = msg.toolCalls.find((t) => t.id === tool_call_id);
+						if (tc) {
+							tc.status = success ? 'success' : 'error';
+							tc.result = output;
+							tc.error = error;
+						}
+					}
+				}
+				messages = [...messages]; // Trigger reactivity
+			}
+		});
+
 		return () => {
 			unlistenChunk.then((f) => f());
 			unlistenEnd.then((f) => f());
+			unlistenToolCall.then((f) => f());
+			unlistenToolResult.then((f) => f());
 		};
 	});
 
@@ -336,6 +455,53 @@
 					{/if}
 				</div>
 			{/if}
+
+			<!-- Model Selector -->
+			<div class="relative mr-2">
+				<button
+					type="button"
+					onclick={() => (showModelDropdown = !showModelDropdown)}
+					class="border-input bg-background hover:bg-accent flex h-8 items-center gap-1 rounded-md border px-2 text-xs transition-colors"
+					title="Select AI Model"
+				>
+					<Wrench class="size-3" />
+					<span class="max-w-28 truncate"
+						>{availableModels.find((m) => m.id === selectedModel)?.label || 'Model'}</span
+					>
+					<svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 9l-7 7-7-7"
+						/>
+					</svg>
+				</button>
+				{#if showModelDropdown}
+					<div
+						class="bg-popover absolute right-0 z-50 mt-1 max-h-80 w-56 overflow-y-auto rounded-md border shadow-lg"
+					>
+						<div class="text-muted-foreground bg-popover sticky top-0 border-b px-3 py-1.5 text-xs">
+							Available Models
+						</div>
+						{#each availableModels as model}
+							<button
+								type="button"
+								class="hover:bg-accent w-full px-3 py-2 text-left text-sm {selectedModel ===
+								model.id
+									? 'bg-accent'
+									: ''}"
+								onclick={() => {
+									selectedModel = model.id;
+									showModelDropdown = false;
+								}}
+							>
+								{model.label}
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</Header>
 	{/snippet}
 
@@ -450,6 +616,48 @@
 									{message.content}
 								{/if}
 							</div>
+
+							<!-- Tool calls display -->
+							{#if message.toolCalls && message.toolCalls.length > 0}
+								<div class="mt-2 space-y-2">
+									{#each message.toolCalls as toolCall}
+										<div
+											class="border-border/50 bg-background/50 flex items-start gap-2 rounded-lg border p-2 text-xs"
+										>
+											<div class="mt-0.5">
+												{#if toolCall.status === 'running'}
+													<Loader2 class="text-muted-foreground size-3.5 animate-spin" />
+												{:else if toolCall.status === 'success'}
+													<Check class="size-3.5 text-green-500" />
+												{:else if toolCall.status === 'error'}
+													<X class="size-3.5 text-red-500" />
+												{:else}
+													<Wrench class="text-muted-foreground size-3.5" />
+												{/if}
+											</div>
+											<div class="flex-1">
+												<div class="flex items-center gap-1.5">
+													<span class="font-medium">{toolCall.name}</span>
+													{#if toolCall.safety === 'dangerous'}
+														<span class="rounded bg-yellow-500/20 px-1 text-yellow-500">⚠️</span>
+													{/if}
+												</div>
+												{#if toolCall.result}
+													<div
+														class="text-muted-foreground mt-1 max-h-24 overflow-y-auto font-mono whitespace-pre-wrap"
+													>
+														{toolCall.result.slice(0, 500)}{toolCall.result.length > 500
+															? '...'
+															: ''}
+													</div>
+												{:else if toolCall.error}
+													<div class="text-destructive mt-1">{toolCall.error}</div>
+												{/if}
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				{/if}
