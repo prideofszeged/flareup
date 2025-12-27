@@ -45,6 +45,7 @@ pub struct FunctionDefinition {
 /// A tool call request from the AI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ToolCall {
     pub id: String,
     pub name: String,
@@ -76,6 +77,7 @@ pub enum BuiltinTool {
 }
 
 impl BuiltinTool {
+    #[allow(dead_code)]
     pub fn name(&self) -> &'static str {
         match self {
             Self::ReadFile => "read_file",
@@ -118,6 +120,7 @@ impl BuiltinTool {
         }
     }
 
+    #[allow(dead_code)]
     pub fn all() -> Vec<Self> {
         vec![
             Self::ReadFile,

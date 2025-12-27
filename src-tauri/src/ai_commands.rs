@@ -45,6 +45,7 @@ pub struct AiCommand {
 }
 
 impl AiCommand {
+    #[allow(dead_code)]
     fn from_row(row: &rusqlite::Row) -> RusqliteResult<Self> {
         let output_action_str: Option<String> = row.get(5)?;
         let output_action = match output_action_str.as_deref() {

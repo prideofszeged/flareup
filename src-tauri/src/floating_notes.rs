@@ -83,7 +83,7 @@ pub async fn toggle_floating_notes_window(app: AppHandle) -> Result<(), String> 
         }
     } else {
         // Create the window
-        let window = WebviewWindowBuilder::new(
+        let _window = WebviewWindowBuilder::new(
             &app,
             "floating-notes",
             WebviewUrl::App("/floating-notes".into()),

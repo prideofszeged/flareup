@@ -127,15 +127,21 @@
 		const assistantMessageIndex = messages.length - 1;
 
 		try {
+			// Build messages array for API (excluding empty assistant placeholder)
+			const historyMessages = messages.slice(0, -1).map((m) => ({
+				role: m.role,
+				content: m.content
+			}));
+
 			await invoke('ai_ask_stream', {
 				requestId: assistantMessageId,
-				prompt: selectedPreset?.systemPrompt
-					? `${selectedPreset.systemPrompt}\n\nUser: ${userMessage}`
-					: userMessage,
+				prompt: userMessage, // Keep for backwards compatibility
 				options: {
 					model: selectedModel === 'default' ? selectedPreset?.model || 'default' : selectedModel,
 					creativity: 'medium',
-					enableTools: true // Enable tool use when configured
+					enableTools: true,
+					messages: historyMessages, // Send full conversation history
+					systemPrompt: selectedPreset?.systemPrompt || null
 				}
 			});
 		} catch (error) {
@@ -394,14 +400,8 @@
 <MainLayout>
 	{#snippet header()}
 		<Header showBackButton={true} onPopView={onBack}>
-			<HeaderInput
-				placeholder="Ask anything..."
-				bind:value={prompt}
-				bind:ref={searchInputEl}
-				autofocus
-				class="!pl-2.5"
-				onkeydown={handleKeydown}
-			/>
+			<span class="text-lg font-medium">AI Chat</span>
+			<div class="flex-1"></div>
 			{#if isGenerating}
 				<div class="mr-4">
 					<Loader2 class="text-muted-foreground size-4 animate-spin" />
@@ -512,10 +512,10 @@
 	{/snippet}
 
 	{#snippet content()}
-		<div class="flex h-full">
+		<div class="flex h-full overflow-hidden">
 			<!-- Sidebar -->
 			{#if showSidebar}
-				<div class="border-border/50 flex w-64 shrink-0 flex-col border-r">
+				<div class="border-border/50 flex w-64 shrink-0 flex-col overflow-hidden border-r">
 					<!-- Sidebar header -->
 					<div class="border-border/50 flex items-center justify-between border-b p-3">
 						<span class="text-sm font-medium">Conversations</span>
@@ -587,86 +587,115 @@
 				</button>
 			{/if}
 
-			<!-- Chat area -->
-			<div
-				bind:this={scrollContainer}
-				class="flex grow flex-col gap-6 overflow-y-auto scroll-smooth p-6"
-			>
-				{#if messages.length === 0}
-					<div class="flex h-full flex-col items-center justify-center text-center">
-						<div class="bg-primary/10 mb-4 rounded-2xl p-4">
-							<Stars class="text-primary size-12" />
-						</div>
-						<h2 class="text-2xl font-semibold">How can I help you today?</h2>
-						<p class="text-muted-foreground mt-2 max-w-sm">
-							Ask anything, from coding questions to general knowledge. Press Ctrl+, to configure.
-						</p>
-					</div>
-				{:else}
-					{#each messages as message}
-						<div
-							class="flex flex-col gap-2 {message.role === 'user'
-								? 'ml-12 items-end'
-								: 'mr-12 items-start'}"
-						>
-							<div
-								class="rounded-2xl px-4 py-3 text-sm leading-relaxed {message.role === 'user'
-									? 'bg-primary text-primary-foreground shadow-sm'
-									: 'bg-muted/50 border-border/50 border'}"
-							>
-								{#if message.role === 'assistant'}
-									<div class="prose prose-sm prose-invert max-w-none">
-										<SvelteMarked source={message.content} />
-									</div>
-								{:else}
-									{message.content}
-								{/if}
+			<!-- Chat column (scroll area + input) -->
+			<div class="flex min-w-0 flex-1 flex-col">
+				<!-- Chat messages area -->
+				<div
+					bind:this={scrollContainer}
+					class="flex grow flex-col gap-6 overflow-y-auto scroll-smooth p-6"
+				>
+					{#if messages.length === 0}
+						<div class="flex h-full flex-col items-center justify-center text-center">
+							<div class="bg-primary/10 mb-4 rounded-2xl p-4">
+								<Stars class="text-primary size-12" />
 							</div>
+							<h2 class="text-2xl font-semibold">How can I help you today?</h2>
+							<p class="text-muted-foreground mt-2 max-w-sm">
+								Ask anything, from coding questions to general knowledge. Press Ctrl+, to configure.
+							</p>
+						</div>
+					{:else}
+						{#each messages as message}
+							<div
+								class="flex flex-col gap-2 {message.role === 'user'
+									? 'ml-12 items-end'
+									: 'mr-12 items-start'}"
+							>
+								<div
+									class="rounded-2xl px-4 py-3 text-sm leading-relaxed {message.role === 'user'
+										? 'bg-primary text-primary-foreground shadow-sm'
+										: 'bg-muted/50 border-border/50 border'}"
+								>
+									{#if message.role === 'assistant'}
+										<div class="prose prose-sm prose-invert max-w-none">
+											<SvelteMarked source={message.content} />
+										</div>
+									{:else}
+										{message.content}
+									{/if}
+								</div>
 
-							<!-- Tool calls display -->
-							{#if message.toolCalls && message.toolCalls.length > 0}
-								<div class="mt-2 space-y-2">
-									{#each message.toolCalls as toolCall}
-										<div
-											class="border-border/50 bg-background/50 flex items-start gap-2 rounded-lg border p-2 text-xs"
-										>
-											<div class="mt-0.5">
-												{#if toolCall.status === 'running'}
-													<Loader2 class="text-muted-foreground size-3.5 animate-spin" />
-												{:else if toolCall.status === 'success'}
-													<Check class="size-3.5 text-green-500" />
-												{:else if toolCall.status === 'error'}
-													<X class="size-3.5 text-red-500" />
-												{:else}
-													<Wrench class="text-muted-foreground size-3.5" />
-												{/if}
-											</div>
-											<div class="flex-1">
-												<div class="flex items-center gap-1.5">
-													<span class="font-medium">{toolCall.name}</span>
-													{#if toolCall.safety === 'dangerous'}
-														<span class="rounded bg-yellow-500/20 px-1 text-yellow-500">⚠️</span>
+								<!-- Tool calls display -->
+								{#if message.toolCalls && message.toolCalls.length > 0}
+									<div class="mt-2 space-y-2">
+										{#each message.toolCalls as toolCall}
+											<div
+												class="border-border/50 bg-background/50 flex items-start gap-2 rounded-lg border p-2 text-xs"
+											>
+												<div class="mt-0.5">
+													{#if toolCall.status === 'running'}
+														<Loader2 class="text-muted-foreground size-3.5 animate-spin" />
+													{:else if toolCall.status === 'success'}
+														<Check class="size-3.5 text-green-500" />
+													{:else if toolCall.status === 'error'}
+														<X class="size-3.5 text-red-500" />
+													{:else}
+														<Wrench class="text-muted-foreground size-3.5" />
 													{/if}
 												</div>
-												{#if toolCall.result}
-													<div
-														class="text-muted-foreground mt-1 max-h-24 overflow-y-auto font-mono whitespace-pre-wrap"
-													>
-														{toolCall.result.slice(0, 500)}{toolCall.result.length > 500
-															? '...'
-															: ''}
+												<div class="flex-1">
+													<div class="flex items-center gap-1.5">
+														<span class="font-medium">{toolCall.name}</span>
+														{#if toolCall.safety === 'dangerous'}
+															<span class="rounded bg-yellow-500/20 px-1 text-yellow-500">⚠️</span>
+														{/if}
 													</div>
-												{:else if toolCall.error}
-													<div class="text-destructive mt-1">{toolCall.error}</div>
-												{/if}
+													{#if toolCall.result}
+														<div
+															class="text-muted-foreground mt-1 max-h-24 overflow-y-auto font-mono whitespace-pre-wrap"
+														>
+															{toolCall.result.slice(0, 500)}{toolCall.result.length > 500
+																? '...'
+																: ''}
+														</div>
+													{:else if toolCall.error}
+														<div class="text-destructive mt-1">{toolCall.error}</div>
+													{/if}
+												</div>
 											</div>
-										</div>
-									{/each}
-								</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					{/if}
+				</div>
+
+				<!-- Chat input at bottom -->
+				<div class="border-border/50 bg-background shrink-0 border-t p-4">
+					<div class="relative">
+						<input
+							type="text"
+							placeholder="Ask anything..."
+							bind:value={prompt}
+							bind:this={searchInputEl}
+							onkeydown={handleKeydown}
+							disabled={isGenerating}
+							class="bg-muted/50 border-input focus:ring-primary w-full rounded-xl border px-4 py-3 pr-12 text-sm transition-all focus:ring-2 focus:outline-none"
+						/>
+						<button
+							onclick={handleSubmit}
+							disabled={isGenerating || !prompt.trim()}
+							class="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground absolute top-1/2 right-2 -translate-y-1/2 rounded-lg p-2 text-white transition-colors"
+						>
+							{#if isGenerating}
+								<Loader2 class="size-4 animate-spin" />
+							{:else}
+								<Send class="size-4" />
 							{/if}
-						</div>
-					{/each}
-				{/if}
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	{/snippet}

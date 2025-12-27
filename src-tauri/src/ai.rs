@@ -39,6 +39,19 @@ pub struct AskOptions {
     pub creativity: Option<String>,
     #[serde(default)]
     pub enable_tools: bool,
+    /// Full conversation history (optional - if provided, used instead of prompt)
+    #[serde(default)]
+    pub messages: Vec<ChatMessage>,
+    /// System prompt (optional)
+    pub system_prompt: Option<String>,
+}
+
+/// A chat message in a conversation
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -835,9 +848,29 @@ pub async fn ai_ask_stream(
         _ => settings.temperature,
     };
 
-    // Build initial messages
-    let mut messages: Vec<serde_json::Value> =
-        vec![serde_json::json!({"role": "user", "content": prompt})];
+    // Build messages from conversation history or single prompt
+    let mut messages: Vec<serde_json::Value> = Vec::new();
+
+    // Add system prompt if provided
+    if let Some(system_prompt) = &options.system_prompt {
+        if !system_prompt.is_empty() {
+            messages.push(serde_json::json!({"role": "system", "content": system_prompt}));
+        }
+    }
+
+    // Use conversation history if provided, otherwise use single prompt
+    if !options.messages.is_empty() {
+        for msg in &options.messages {
+            messages.push(serde_json::json!({"role": msg.role, "content": msg.content}));
+        }
+        tracing::info!(
+            message_count = options.messages.len(),
+            "Using conversation history"
+        );
+    } else {
+        // Fallback to single prompt for backwards compatibility
+        messages.push(serde_json::json!({"role": "user", "content": prompt}));
+    }
 
     // Build request body
     let mut body = serde_json::json!({
