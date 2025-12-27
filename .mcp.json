@@ -1,11 +1,9 @@
 {
-  "mcpServers": {
-    "ChunkHound": {
-      "command": "chunkhound",
-      "args": [
-        "mcp"
-      ],
-      "env": {}
-    }
-  }
+	"mcpServers": {
+		"ChunkHound": {
+			"command": "chunkhound",
+			"args": ["mcp"],
+			"env": {}
+		}
+	}
 }

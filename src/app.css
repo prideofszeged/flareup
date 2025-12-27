@@ -300,12 +300,9 @@
 		/* Very dramatic border and shadow for maximum window edge visibility */
 		box-shadow:
 			inset 0 0 0 2px rgba(255, 255, 255, 0.5),
-			/* Thick, bright inner border */
-			0 0 0 1px rgba(255, 255, 255, 0.4),
-			/* Bright outer border */
-			0 20px 60px rgba(0, 0, 0, 0.8),
-			/* Very strong shadow */
-			0 10px 30px rgba(0, 0, 0, 0.6);
+			/* Thick, bright inner border */ 0 0 0 1px rgba(255, 255, 255, 0.4),
+			/* Bright outer border */ 0 20px 60px rgba(0, 0, 0, 0.8),
+			/* Very strong shadow */ 0 10px 30px rgba(0, 0, 0, 0.6);
 		/* Additional shadow layer */
 		border-radius: 8px;
 		/* Add rounded corners to make border more visible */
@@ -313,7 +310,6 @@
 }
 
 @keyframes loading-indicator-animation {
-
 	0%,
 	to {
 		left: 0;

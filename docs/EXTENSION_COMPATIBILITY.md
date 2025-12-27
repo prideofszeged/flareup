@@ -24,13 +24,10 @@ Provides Linux equivalents for common AppleScript commands:
 
 - **Application Activation**: `tell application "AppName" to activate`
   - Translated to: `gtk-launch` or `xdg-open`
-  
 - **Application Quit**: `tell application "AppName" to quit`
   - Translated to: `pkill -f appname`
-  
 - **Notifications**: `display notification "message" with title "title"`
   - Translated to: `notify-send "title" "message"`
-  
 - **Volume Control**: `set volume N`
   - Translated to: `pactl set-sink-volume @DEFAULT_SINK@ N%` or `amixer set Master N%`
 
@@ -48,7 +45,7 @@ Provides cross-platform system information:
 Extensions using macOS-specific APIs will automatically use the shims when running on Flareup:
 
 ```typescript
-import { runAppleScript } from "@raycast/api";
+import { runAppleScript } from '@raycast/api';
 
 // This will work on Linux through the shim layer
 await runAppleScript('display notification "Hello" with title "Flareup"');
@@ -76,7 +73,7 @@ Located in `sidecar/src/api/shims.ts`:
 
 ```typescript
 // Translate a macOS path to Linux equivalent
-const linuxPath = await translatePath("/Applications/Safari.app");
+const linuxPath = await translatePath('/Applications/Safari.app');
 
 // Run AppleScript with automatic translation
 const result = await runAppleScript('tell application "Firefox" to activate');

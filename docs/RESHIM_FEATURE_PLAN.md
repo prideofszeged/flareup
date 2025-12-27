@@ -18,9 +18,10 @@ Add a new function that performs a full reshim analysis:
 pub fn analyze_extension_for_reshim(extension_path: &str) -> Result<ReshimAnalysis, String>
 ```
 
-Returns: 
+Returns:
+
 - Tools that can be shimmed
-- Tools already shimmed  
+- Tools already shimmed
 - Tools that cannot be shimmed (need manual install)
 
 #### `lib.rs`
@@ -31,7 +32,7 @@ Add new Tauri commands:
 #[tauri::command]
 fn shim_analyze_extension(extension_path: String) -> Result<ReshimAnalysis, String>
 
-#[tauri::command]  
+#[tauri::command]
 fn shim_apply_reshim(tool_names: Vec<String>) -> Result<ReshimResult, String>
 ```
 
@@ -104,6 +105,7 @@ pub struct ReshimResult {
 ## Prerequisites
 
 This builds on the existing shim registry system in `src-tauri/src/shim_registry.rs` which already has:
+
 - Tool registry with macOS → Linux mappings
 - Wrapper script generation
 - Distro detection

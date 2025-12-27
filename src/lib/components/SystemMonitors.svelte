@@ -85,12 +85,12 @@
 	});
 </script>
 
-<div class="p-6 space-y-6">
+<div class="space-y-6 p-6">
 	<div class="flex items-center justify-between">
 		<h2 class="text-2xl font-bold">System Monitors</h2>
 		<button
 			onclick={refreshData}
-			class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+			class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-1.5 text-sm"
 		>
 			Refresh
 		</button>
@@ -108,11 +108,8 @@
 						<span>Overall</span>
 						<span class="font-mono">{cpu.usage_percent.toFixed(1)}%</span>
 					</div>
-					<div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-secondary">
-						<div
-							class="h-full bg-primary transition-all"
-							style="width: {cpu.usage_percent}%"
-						></div>
+					<div class="bg-secondary mt-1 h-2 w-full overflow-hidden rounded-full">
+						<div class="bg-primary h-full transition-all" style="width: {cpu.usage_percent}%"></div>
 					</div>
 				</div>
 				<div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -122,9 +119,9 @@
 								<span class="text-muted-foreground">Core {core.index}</span>
 								<span class="font-mono">{core.usage_percent.toFixed(0)}%</span>
 							</div>
-							<div class="mt-1 h-1 w-full overflow-hidden rounded-full bg-secondary">
+							<div class="bg-secondary mt-1 h-1 w-full overflow-hidden rounded-full">
 								<div
-									class="h-full bg-primary/70 transition-all"
+									class="bg-primary/70 h-full transition-all"
 									style="width: {core.usage_percent}%"
 								></div>
 							</div>
@@ -142,13 +139,13 @@
 					<span>{formatBytes(memory.used_bytes)} / {formatBytes(memory.total_bytes)}</span>
 					<span class="font-mono">{memory.usage_percent.toFixed(1)}%</span>
 				</div>
-				<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+				<div class="bg-secondary mt-2 h-2 w-full overflow-hidden rounded-full">
 					<div
-						class="h-full bg-primary transition-all"
+						class="bg-primary h-full transition-all"
 						style="width: {memory.usage_percent}%"
 					></div>
 				</div>
-				<div class="mt-2 text-xs text-muted-foreground">
+				<div class="text-muted-foreground mt-2 text-xs">
 					Available: {formatBytes(memory.available_bytes)}
 				</div>
 			</div>
@@ -164,17 +161,17 @@
 							<div class="flex items-center justify-between text-sm">
 								<div>
 									<span class="font-medium">{disk.mount_point}</span>
-									<span class="ml-2 text-xs text-muted-foreground">({disk.file_system})</span>
+									<span class="text-muted-foreground ml-2 text-xs">({disk.file_system})</span>
 								</div>
 								<span class="font-mono">{disk.usage_percent.toFixed(1)}%</span>
 							</div>
-							<div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-secondary">
+							<div class="bg-secondary mt-1 h-2 w-full overflow-hidden rounded-full">
 								<div
-									class="h-full bg-primary transition-all"
+									class="bg-primary h-full transition-all"
 									style="width: {disk.usage_percent}%"
 								></div>
 							</div>
-							<div class="mt-1 text-xs text-muted-foreground">
+							<div class="text-muted-foreground mt-1 text-xs">
 								{formatBytes(disk.used_bytes)} / {formatBytes(disk.total_bytes)} ({formatBytes(
 									disk.available_bytes
 								)} free)
@@ -193,7 +190,7 @@
 					{#each network as net}
 						<div class="text-sm">
 							<div class="font-medium">{net.interface}</div>
-							<div class="mt-1 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+							<div class="text-muted-foreground mt-1 grid grid-cols-2 gap-2 text-xs">
 								<div>↓ Received: {formatBytes(net.bytes_received)}</div>
 								<div>↑ Sent: {formatBytes(net.bytes_sent)}</div>
 								<div>Packets RX: {net.packets_received.toLocaleString()}</div>
@@ -215,17 +212,17 @@
 						{#if battery.is_charging}
 							<span class="text-xs text-green-600 dark:text-green-400">⚡ Charging</span>
 						{:else}
-							<span class="text-xs text-muted-foreground">Discharging</span>
+							<span class="text-muted-foreground text-xs">Discharging</span>
 						{/if}
 					</div>
 					{#if battery.time_remaining_minutes}
-						<span class="text-xs text-muted-foreground">
+						<span class="text-muted-foreground text-xs">
 							{Math.floor(battery.time_remaining_minutes / 60)}h {battery.time_remaining_minutes %
 								60}m remaining
 						</span>
 					{/if}
 				</div>
-				<div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+				<div class="bg-secondary mt-2 h-2 w-full overflow-hidden rounded-full">
 					<div
 						class="h-full transition-all"
 						class:bg-green-500={battery.percentage > 50}

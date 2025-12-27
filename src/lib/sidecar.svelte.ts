@@ -26,7 +26,7 @@ class SidecarService {
 	oauthState: OauthState = $state(null);
 	logs: string[] = $state([]);
 
-	constructor() { }
+	constructor() {}
 
 	get isRunning() {
 		return this.#sidecarChild !== null;

@@ -67,7 +67,8 @@ export function useCommandPaletteItems({
 	selectedQuicklinkForArgument
 }: UseCommandPaletteItemsArgs) {
 	const allSearchableItems = $derived.by(() => {
-		const items: { type: 'plugin' | 'app' | 'quicklink' | 'ai-command'; id: string; data: any }[] = [];
+		const items: { type: 'plugin' | 'app' | 'quicklink' | 'ai-command'; id: string; data: any }[] =
+			[];
 		items.push(...plugins().map((p) => ({ type: 'plugin', id: p.pluginPath, data: p }) as const));
 		items.push(...installedApps().map((a) => ({ type: 'app', id: a.exec, data: a }) as const));
 		items.push(
@@ -75,7 +76,9 @@ export function useCommandPaletteItems({
 		);
 		// Add AI commands from cache
 		items.push(
-			...cachedAiCommands.map((c) => ({ type: 'ai-command', id: `ai-command-${c.id}`, data: c }) as const)
+			...cachedAiCommands.map(
+				(c) => ({ type: 'ai-command', id: `ai-command-${c.id}`, data: c }) as const
+			)
 		);
 		return items;
 	});
@@ -162,7 +165,12 @@ export function useCommandPaletteItems({
 
 		// Debug: log current aliases state (stringify to see actual content)
 		if (term.trim()) {
-			console.log('[CommandPalette] Searching with term:', term, 'Available aliases:', JSON.stringify(aliases));
+			console.log(
+				'[CommandPalette] Searching with term:',
+				term,
+				'Available aliases:',
+				JSON.stringify(aliases)
+			);
 		}
 
 		// Build reverse lookup: command_id -> alias
@@ -181,8 +189,8 @@ export function useCommandPaletteItems({
 
 			// Check if search term matches an alias exactly or partially
 			const termLower = term.trim().toLowerCase();
-			const aliasMatch = Object.entries(aliases).find(([alias]) =>
-				alias.toLowerCase() === termLower || alias.toLowerCase().startsWith(termLower)
+			const aliasMatch = Object.entries(aliases).find(
+				([alias]) => alias.toLowerCase() === termLower || alias.toLowerCase().startsWith(termLower)
 			);
 
 			console.log('[CommandPalette] Alias match for term:', termLower, '->', aliasMatch);
@@ -191,12 +199,16 @@ export function useCommandPaletteItems({
 				const [matchedAlias, commandId] = aliasMatch;
 				// Find the item in allSearchableItems by command ID
 				console.log('[CommandPalette] Looking for item with ID:', commandId);
-				console.log('[CommandPalette] Available item IDs:', allSearchableItems.map(i => i.id).slice(0, 10), '...');
-				const matchedItem = allSearchableItems.find(item => item.id === commandId);
+				console.log(
+					'[CommandPalette] Available item IDs:',
+					allSearchableItems.map((i) => i.id).slice(0, 10),
+					'...'
+				);
+				const matchedItem = allSearchableItems.find((item) => item.id === commandId);
 				console.log('[CommandPalette] Matched item:', matchedItem);
 				if (matchedItem) {
 					// Remove if already in results (to avoid duplicates)
-					items = items.filter(item => item.id !== commandId);
+					items = items.filter((item) => item.id !== commandId);
 					// Add at the beginning with high score
 					items.unshift({
 						...matchedItem,
@@ -208,7 +220,9 @@ export function useCommandPaletteItems({
 			}
 		} else {
 			// No search term - show all items with their aliases
-			console.log('[CommandPalette] No search term. commandToAlias map:', [...commandToAlias.entries()]);
+			console.log('[CommandPalette] No search term. commandToAlias map:', [
+				...commandToAlias.entries()
+			]);
 			items = allSearchableItems.map((item) => ({
 				...item,
 				score: 0,
@@ -255,7 +269,7 @@ export function useCommandPaletteItems({
 		}
 
 		// Deduplicate by ID, but prefer items that have an alias attached
-		const seenIds = new Map<string, typeof items[0]>();
+		const seenIds = new Map<string, (typeof items)[0]>();
 		for (const item of items) {
 			const existing = seenIds.get(item.id);
 			if (!existing) {
@@ -270,9 +284,12 @@ export function useCommandPaletteItems({
 		const result = [...seenIds.values()];
 
 		// Debug: log items with aliases
-		const itemsWithAlias = result.filter(i => i.alias);
+		const itemsWithAlias = result.filter((i) => i.alias);
 		if (itemsWithAlias.length > 0) {
-			console.log('[CommandPalette] Items with aliases:', itemsWithAlias.map(i => ({ id: i.id, alias: i.alias, type: i.type })));
+			console.log(
+				'[CommandPalette] Items with aliases:',
+				itemsWithAlias.map((i) => ({ id: i.id, alias: i.alias, type: i.type }))
+			);
 		}
 
 		return result;

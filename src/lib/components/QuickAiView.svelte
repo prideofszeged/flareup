@@ -209,8 +209,10 @@
 
 <svelte:window onkeydown={handleKeydown} />
 <div
-	role="application"
-	tabindex="0"
+	role="dialog"
+	aria-modal="true"
+	aria-label="Quick AI assistant"
+	tabindex="-1"
 	class="bg-background text-foreground flex h-screen flex-col outline-none"
 	style="
 		box-shadow: 

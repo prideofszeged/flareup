@@ -102,4 +102,3 @@ export async function trash(path: fs.PathLike | fs.PathLike[]): Promise<void> {
 export async function runAppleScript(script: string): Promise<string> {
 	return runAppleScriptShim(script);
 }
-

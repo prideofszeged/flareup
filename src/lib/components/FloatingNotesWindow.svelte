@@ -37,19 +37,21 @@
 		getCurrentWebviewWindow().hide();
 	}
 
-    // Drag region logic needed for frameless window
-    function startDrag() {
-        getCurrentWebviewWindow().startDragging();
-    }
+	// Drag region logic needed for frameless window
+	function startDrag() {
+		getCurrentWebviewWindow().startDragging();
+	}
 </script>
 
-<div class="flex h-screen w-full flex-col overflow-hidden rounded-lg border bg-[#fff9c4] shadow-xl dark:bg-yellow-900/90 text-black dark:text-white">
+<div
+	class="flex h-screen w-full flex-col overflow-hidden rounded-lg border bg-[#fff9c4] text-black shadow-xl dark:bg-yellow-900/90 dark:text-white"
+>
 	<!-- Drag Handle / Header -->
 	<div
-		class="flex h-8 shrink-0 items-center justify-between bg-black/5 px-2 cursor-grab active:cursor-grabbing"
+		class="flex h-8 shrink-0 cursor-grab items-center justify-between bg-black/5 px-2 active:cursor-grabbing"
 		onmousedown={startDrag}
-        role="button"
-        tabindex="-1"
+		role="button"
+		tabindex="-1"
 	>
 		<span class="text-xs font-medium opacity-50">Floating Note</span>
 		<button
@@ -65,18 +67,21 @@
 		placeholder="Type your notes here..."
 		value={content}
 		oninput={handleInput}
-        spellcheck="false"
+		spellcheck="false"
 	></textarea>
 
 	<div class="flex h-5 shrink-0 items-center justify-end px-2">
-		<span class="text-[10px] opacity-40 transition-opacity duration-300" class:opacity-100={isSaving}>
+		<span
+			class="text-[10px] opacity-40 transition-opacity duration-300"
+			class:opacity-100={isSaving}
+		>
 			{isSaving ? 'Saving...' : 'Saved'}
 		</span>
 	</div>
 </div>
 
 <style>
-    :global(body) {
-        background: transparent;
-    }
+	:global(body) {
+		background: transparent;
+	}
 </style>

@@ -1,6 +1,6 @@
 import { createWrapperComponent } from '../utils';
 
-// MenuBarExtra is used for menu bar commands  
+// MenuBarExtra is used for menu bar commands
 // Since we don't have a menu bar in Linux, we'll create a stub component
 const MenuBarExtraBase = createWrapperComponent('MenuBarExtra');
 
@@ -12,8 +12,8 @@ const Submenu = createWrapperComponent('MenuBarExtra.Submenu');
 
 // Attach sub-components
 export const MenuBarExtra = Object.assign(MenuBarExtraBase, {
-    Item,
-    Section,
-    Separator,
-    Submenu
+	Item,
+	Section,
+	Separator,
+	Submenu
 });

@@ -12,12 +12,11 @@ This directory contains historical audit reports. All active planning has moved 
 ## 📚 Archive Contents
 
 ### Audit Reports (Reference Only)
-  
+
 - **[AUDIT_REPORT.md](./AUDIT_REPORT.md)** - Comprehensive code audit (Dec 21, 2025)
   - 📖 Status: Reference document
   - 🔍 Contains: Performance analysis, code quality review, security concerns
   - 💡 Note: Many issues addressed in v0.1.0 and v0.1.1
-  
 - **[CLAUDE_REVIEW_2025-12-22.md](./CLAUDE_REVIEW_2025-12-22.md)** - Code review (Dec 22, 2025)
   - ✅ Status: Issues fixed in v0.1.0 and v0.1.1
   - 🐛 Addressed: Extension compatibility, database performance, graceful error handling
@@ -27,18 +26,21 @@ This directory contains historical audit reports. All active planning has moved 
 Items from the audit reports that have been completed:
 
 ### Performance & Stability
+
 - ✅ Database indices added (clipboard, AI, snippets)
 - ✅ N+1 query fix in file indexer
 - ✅ CPU monitor background thread (non-blocking)
 - ✅ Structured logging with tracing crate
 
 ### Code Quality
+
 - ✅ Debug console.log statements removed
 - ✅ println!/eprintln! replaced with proper logging
 - ✅ Extension compatibility fixes (React Reconciler, usePersistentState)
 - ✅ TcpListener graceful port conflict handling
 
 ### Features Added
+
 - ✅ Comprehensive settings system (6 tabs)
 - ✅ Theme support (9 professional themes)
 - ✅ Close on blur functionality
@@ -52,6 +54,7 @@ Items from the audit reports that have been completed:
 **For current work:** Always refer to [ROADMAP.md](/ROADMAP.md)
 
 **For historical context:**
+
 - Understanding technical debt inventory → AUDIT_REPORT.md
 - Reviewing past code quality issues → CLAUDE_REVIEW_2025-12-22.md
 

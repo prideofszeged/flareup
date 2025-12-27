@@ -33,7 +33,6 @@ export type ViewState =
 	| 'downloads'
 	| 'quick-ai';
 
-
 type OauthState = {
 	url: string;
 	providerName: string;
@@ -57,8 +56,6 @@ class ViewManager {
 	quickAiPrompt = $state('');
 	quickAiSelection = $state('');
 	quickAiResponse = $state('');
-
-
 
 	showCommandPalette = () => {
 		this.currentView = 'command-palette';
@@ -127,7 +124,6 @@ class ViewManager {
 		this.showCommandPalette();
 	};
 
-
 	runPlugin = async (plugin: PluginInfo) => {
 		switch (plugin.pluginPath) {
 			case 'builtin:store':
@@ -159,7 +155,9 @@ class ViewManager {
 				return;
 			case 'builtin:open-latest-download':
 				try {
-					const latest = await invoke<{ name: string; path: string } | null>('downloads_get_latest');
+					const latest = await invoke<{ name: string; path: string } | null>(
+						'downloads_get_latest'
+					);
 					if (latest) {
 						await invoke('downloads_open_file', { path: latest.path });
 						await invoke('show_hud', { title: `Opened: ${latest.name}` });
@@ -223,7 +221,9 @@ class ViewManager {
 				return;
 			case 'builtin:empty-trash':
 				// Show confirmation dialog
-				const trashConfirm = confirm('Are you sure you want to permanently delete all items in trash?');
+				const trashConfirm = confirm(
+					'Are you sure you want to permanently delete all items in trash?'
+				);
 				if (trashConfirm) {
 					const count = await invoke<number>('empty_trash');
 					await invoke('show_hud', { title: `Removed ${count} items from trash` });

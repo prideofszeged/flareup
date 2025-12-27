@@ -51,9 +51,9 @@ class ScriptCommandsStore {
 		}
 	}
 
-    async openScriptsFolder() {
-        await invoke('open_scripts_folder');
-    }
+	async openScriptsFolder() {
+		await invoke('open_scripts_folder');
+	}
 }
 
 export const scriptCommandsStore = new ScriptCommandsStore();

@@ -1,4 +1,5 @@
 # Flare Development Roadmap
+
 **Last Updated:** 2025-12-24
 **Current Version:** 0.1.1  
 **Raycast Parity:** ~80%
@@ -10,6 +11,7 @@
 Build a Raycast-quality launcher for Linux with native system integration and extension compatibility.
 
 **Core Goals:**
+
 - 90%+ Raycast feature parity
 - Better Linux-native integration than Raycast
 - Maintain extension compatibility where possible
@@ -20,6 +22,7 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 ## ✅ Recent Wins (Last Week)
 
 ### Version 0.1.1 - Settings & Theming (Dec 24)
+
 - ✅ **Per-Command Hotkeys** - Full system with SQLite storage, UI, conflict detection, defaults (Dec 23)
 - ✅ **Window Management Global Hotkeys** - Auto-initialized defaults, works on ANY active window (Dec 24)
 - ✅ **System Commands Complete** - Restart, volume controls, empty trash, eject drive with confirmations
@@ -30,21 +33,24 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 - ✅ **Close on Blur** - Window auto-hides when focus is lost (configurable)
 - ✅ **Auto-Start on Login** - XDG autostart for Linux
 - ✅ **Frecency Bug Fix** - Fixed nanosecond timestamp conversion
-- ✅ **Window Edge Visibility** - Border/shadow on frameless window  
+- ✅ **Window Edge Visibility** - Border/shadow on frameless window
 - ✅ **Automated Version Management** - Single source in package.json
 
 ### Extension Compatibility Fixed (Dec 22)
+
 - ✅ `usePersistentState` now actually persists (was just `useState`)
 - ✅ React Reconciler stubs return safe values instead of throwing errors
 - ✅ TcpListener gracefully handles port conflicts (no more crashes)
 
 ### Performance & Stability (Dec 22)
+
 - ✅ Database indices added (clipboard, AI, snippets) - major query speedup
 - ✅ N+1 query eliminated in file indexer - 10x faster indexing
 - ✅ CPU monitoring moved to background thread - non-blocking UI
 - ✅ Structured logging via `tracing` crate - production-ready
 
 ### Code Quality (Dec 22)
+
 - ✅ Debug `console.log` statements removed
 - ✅ `println!`/`eprintln!` replaced with proper logging
 
@@ -56,30 +62,30 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 
 ### What Works Well
 
-| Feature | Status | Quality | Notes |
-|---------|--------|---------|-------|
-| Command Palette | ✅ Complete | Excellent | Fuzzy search, frecency ranking |
-| Calculator | ✅ Complete | Excellent | SoulverCore integration |
-| Clipboard History | ✅ Complete | Excellent | Text, images, colors, AES-GCM encryption |
-| Snippets | ✅ Complete | Good | Rich placeholders, terminal detection |
-| AI Chat | ✅ Complete | Excellent | Multi-provider, conversation history |
-| File Search | ✅ Complete | Good | Fast indexing, watch for changes |
-| Extensions | 🟡 Partial | Good | Basic compatibility, some limitations |
-| System Monitors | ✅ Complete | Excellent | CPU, RAM, disk, battery, background updates |
-| Quick Toggles | 🟡 Partial | Good | WiFi, Bluetooth, Dark Mode (DE-specific) |
-| GitHub OAuth | ✅ Complete | Good | Token management via keyring |
-| **Settings System** | ✅ Complete | Excellent | Multi-tab, persistence, themes |
-| **Window Management** | ✅ Complete | Good | X11 snap/move/resize (343 LOC) |
+| Feature               | Status      | Quality   | Notes                                       |
+| --------------------- | ----------- | --------- | ------------------------------------------- |
+| Command Palette       | ✅ Complete | Excellent | Fuzzy search, frecency ranking              |
+| Calculator            | ✅ Complete | Excellent | SoulverCore integration                     |
+| Clipboard History     | ✅ Complete | Excellent | Text, images, colors, AES-GCM encryption    |
+| Snippets              | ✅ Complete | Good      | Rich placeholders, terminal detection       |
+| AI Chat               | ✅ Complete | Excellent | Multi-provider, conversation history        |
+| File Search           | ✅ Complete | Good      | Fast indexing, watch for changes            |
+| Extensions            | 🟡 Partial  | Good      | Basic compatibility, some limitations       |
+| System Monitors       | ✅ Complete | Excellent | CPU, RAM, disk, battery, background updates |
+| Quick Toggles         | 🟡 Partial  | Good      | WiFi, Bluetooth, Dark Mode (DE-specific)    |
+| GitHub OAuth          | ✅ Complete | Good      | Token management via keyring                |
+| **Settings System**   | ✅ Complete | Excellent | Multi-tab, persistence, themes              |
+| **Window Management** | ✅ Complete | Good      | X11 snap/move/resize (343 LOC)              |
 
 ### Critical Gaps
 
-| Feature | Status | Impact | Blocking |
-|---------|--------|--------|----------|
-| **Per-Command Hotkeys** | ✅ Complete | Critical | SQLite storage, UI, defaults |
-| **System Commands** | ✅ Complete | High | Restart, volume, trash, eject with confirmations |
-| **Window Management** | ✅ Complete | High | Global hotkeys, auto-initialized, works on any window |
-| **Downloads Manager** | ✅ Complete | Medium | File watching, SQLite, full UI, grid view |
-| **Extension Compatibility** | ✅ Complete | High | Scoring, warnings, macOS detection |
+| Feature                     | Status      | Impact   | Blocking                                              |
+| --------------------------- | ----------- | -------- | ----------------------------------------------------- |
+| **Per-Command Hotkeys**     | ✅ Complete | Critical | SQLite storage, UI, defaults                          |
+| **System Commands**         | ✅ Complete | High     | Restart, volume, trash, eject with confirmations      |
+| **Window Management**       | ✅ Complete | High     | Global hotkeys, auto-initialized, works on any window |
+| **Downloads Manager**       | ✅ Complete | Medium   | File watching, SQLite, full UI, grid view             |
+| **Extension Compatibility** | ✅ Complete | High     | Scoring, warnings, macOS detection                    |
 
 ---
 
@@ -90,6 +96,7 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 **Goal:** 80% → 85% parity
 
 #### 1.1 Per-Command Hotkeys ✅ COMPLETED
+
 **Status:** ✅ Complete (Dec 23)  
 **Impact:** CRITICAL - Major usability feature
 
@@ -105,10 +112,12 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
   - And more...
 
 #### 1.2 System Commands ✅ COMPLETED
+
 **Status:** ✅ Complete (Already was done!)  
 **Impact:** HIGH - Expected functionality
 
 **All Implemented:**
+
 - [x] Lock screen (DE-specific detection)
 - [x] Sleep (`systemctl suspend`)
 - [x] Shutdown with confirmation
@@ -120,10 +129,12 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 - [x] Eject drive (`udisksctl`)
 
 #### 1.3 Window Management ✅ COMPLETED
+
 **Status:** ✅ Complete (Dec 24)  
 **Impact:** HIGH - Global window management via hotkeys
 
 **Fully Implemented:**
+
 - [x] X11 window detection via `_NET_ACTIVE_WINDOW` (targets ANY active window)
 - [x] Snap positions: left/right half, quarters, center, maximize, almost-maximize
 - [x] Multi-monitor support via xrandr
@@ -145,10 +156,12 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 **Goal:** 80% → 90%+ parity
 
 #### 2.1 Downloads Manager ✅ COMPLETED
+
 **Status:** ✅ Complete (Already was done!)  
 **Impact:** MEDIUM
 
 **Fully Implemented:**
+
 - [x] File watching via inotify (`notify` crate)
 - [x] SQLite storage for download history
 - [x] UI view with search/filter
@@ -157,10 +170,12 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 - [x] Real-time detection of new downloads
 
 #### 2.2 Extension Compatibility ✅ COMPLETED
+
 **Status:** ✅ Complete (Already was done!)  
 **Impact:** HIGH
 
 **Fully Implemented:**
+
 - [x] Compatibility scoring system (0-100)
 - [x] Heuristic detection for:
   - AppleScript patterns
@@ -174,6 +189,7 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 - [x] AppleScript shims with extensive pattern support
 
 #### 2.3 Testing Infrastructure (2 days)
+
 - [ ] Add Rust unit tests (currently 0% coverage)
   - [ ] snippets/engine.rs (placeholder expansion)
   - [ ] extension_shims.rs (path translation)
@@ -181,11 +197,12 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
   - [ ] soulver.rs (calculator)
 - [ ] Enhance CI pipeline
   - [ ] Add `cargo test` step
-  - [ ] Add `pnpm test:unit` step  
+  - [ ] Add `pnpm test:unit` step
   - [ ] Run `cargo clippy -- -D warnings`
   - [ ] PR-triggered workflows
 
 #### 2.4 Performance Profiling (1 day)
+
 - [ ] Profile startup time (target: <500ms)
 - [ ] Profile search latency (target: <50ms)
 - [ ] Memory usage audit
@@ -197,13 +214,13 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 
 **Timeline:** After 90% parity achieved
 
-| Feature | Effort | Priority | Notes |
-|---------|--------|----------|-------|
-| Menu Bar / System Tray | 3 days | Medium | Background indicator |
-| Wayland Window Mgmt | 2 weeks | Medium | Compositor-specific (Sway/GNOME/KDE) |
-| Settings Sync | 1 week | Medium | Cross-device sync |
-| Extension Hot Reload | 2 days | Low | Dev experience |
-| Trash Management | 1 day | Low | Restore from trash |
+| Feature                | Effort  | Priority | Notes                                |
+| ---------------------- | ------- | -------- | ------------------------------------ |
+| Menu Bar / System Tray | 3 days  | Medium   | Background indicator                 |
+| Wayland Window Mgmt    | 2 weeks | Medium   | Compositor-specific (Sway/GNOME/KDE) |
+| Settings Sync          | 1 week  | Medium   | Cross-device sync                    |
+| Extension Hot Reload   | 2 days  | Low      | Dev experience                       |
+| Trash Management       | 1 day   | Low      | Restore from trash                   |
 
 ---
 
@@ -214,6 +231,7 @@ Build a Raycast-quality launcher for Linux with native system integration and ex
 Features that go beyond Raycast:
 
 #### 1. Keyboard Maestro-Style Macros ⭐
+
 **Priority:** HIGH - Major differentiator
 
 - Record keyboard sequences
@@ -222,28 +240,33 @@ Features that go beyond Raycast:
 - Conditional branching and loops
 
 **MVP Scope:**
+
 - Keyboard recording only (no mouse)
 - Hotkey triggers
 - Basic actions: type text, key combo, delay, shell command
 - Simple variables: `{clipboard}`, `{date}`, `{input}`
 
 #### 2. Scheduled Actions
+
 - Run extensions on timers
 - Cron-like scheduling
 - Daily digest commands
 - Delayed clipboard actions
 
 #### 3. Webhooks / Remote Triggers
+
 - HTTP endpoints trigger commands
 - Integration with n8n, Zapier, Home Assistant
 - Authentication for security
 
 #### 4. Chained Commands / Pipes
+
 - Command output → next command input
 - Visual workflow builder
 - Save pipelines as reusable workflows
 
 #### 5. Linux System Integration
+
 - Systemd service control
 - DBus-native toggles (faster than shell commands)
 - Docker/Podman container management
@@ -255,17 +278,17 @@ Features that go beyond Raycast:
 
 From most to least critical for Raycast replacement:
 
-| Rank | Initiative | Impact | Effort | Timeline |
-|------|-----------|--------|--------|----------|
-| 1 | **Per-Command Hotkeys** | Critical | Medium | Week 1 |
-| 2 | **System Commands** | High | Low | Week 1 |
-| 3 | **Window Mgmt UI** | Medium | Low | Week 2 |
-| 4 | Downloads Manager | Medium | Medium | Week 2-3 |
-| 5 | Extension Compatibility | High | Medium | Week 3-4 |
-| 6 | Testing Infrastructure | Medium | Medium | Week 4 |
-| 7 | Performance Tuning | Medium | Medium | Week 5 |
-| 8 | Settings Sync | Medium | High | Future |
-| 9 | Macro System | High | High | Future |
+| Rank | Initiative              | Impact   | Effort | Timeline |
+| ---- | ----------------------- | -------- | ------ | -------- |
+| 1    | **Per-Command Hotkeys** | Critical | Medium | Week 1   |
+| 2    | **System Commands**     | High     | Low    | Week 1   |
+| 3    | **Window Mgmt UI**      | Medium   | Low    | Week 2   |
+| 4    | Downloads Manager       | Medium   | Medium | Week 2-3 |
+| 5    | Extension Compatibility | High     | Medium | Week 3-4 |
+| 6    | Testing Infrastructure  | Medium   | Medium | Week 4   |
+| 7    | Performance Tuning      | Medium   | Medium | Week 5   |
+| 8    | Settings Sync           | Medium   | High   | Future   |
+| 9    | Macro System            | High     | High   | Future   |
 
 ---
 
@@ -274,12 +297,14 @@ From most to least critical for Raycast replacement:
 ### Extension Compatibility
 
 **What Works:**
+
 - Pure UI extensions (lists, forms, detail views) - 90%
 - Clipboard operations - 80% (HTML not supported)
 - HTTP/API calls - 95%
 - Local storage & preferences - 100%
 
 **What Doesn't:**
+
 - AppleScript (only 4 basic patterns) - 10%
 - Native macOS binaries - 0%
 - macOS-specific system APIs - 5%
@@ -287,26 +312,26 @@ From most to least critical for Raycast replacement:
 
 **AppleScript Coverage:**
 
-| Pattern | Status |
-|---------|--------|
+| Pattern                    | Status       |
+| -------------------------- | ------------ |
 | `tell app "X" to activate` | ✅ Supported |
-| `tell app "X" to quit` | ✅ Supported |
-| `display notification` | ✅ Supported |
-| `set volume` | ✅ Supported |
-| `do shell script` | ❌ Not yet |
-| `open location` | ❌ Not yet |
-| `tell app "System Events"` | ❌ Complex |
-| `tell app "Finder"` | ❌ Complex |
+| `tell app "X" to quit`     | ✅ Supported |
+| `display notification`     | ✅ Supported |
+| `set volume`               | ✅ Supported |
+| `do shell script`          | ❌ Not yet   |
+| `open location`            | ❌ Not yet   |
+| `tell app "System Events"` | ❌ Complex   |
+| `tell app "Finder"`        | ❌ Complex   |
 
 ### Platform Limitations
 
-| Feature | X11 | Wayland | Notes |
-|---------|-----|---------|-------|
-| Window Management | ✅ Works | 🟡 Partial | Compositor-specific |
-| Global Hotkeys | ✅ Works | ✅ Works | Via Tauri plugin |
-| Clipboard | ✅ Works | ✅ Works | Via Tauri plugin |
-| Selected Text | ✅ Works | ⚠️ Limited | Wayland security model |
-| Snippet Expansion | ✅ Works | ⚠️ Requires udev | Need keyboard access |
+| Feature           | X11      | Wayland          | Notes                  |
+| ----------------- | -------- | ---------------- | ---------------------- |
+| Window Management | ✅ Works | 🟡 Partial       | Compositor-specific    |
+| Global Hotkeys    | ✅ Works | ✅ Works         | Via Tauri plugin       |
+| Clipboard         | ✅ Works | ✅ Works         | Via Tauri plugin       |
+| Selected Text     | ✅ Works | ⚠️ Limited       | Wayland security model |
+| Snippet Expansion | ✅ Works | ⚠️ Requires udev | Need keyboard access   |
 
 ---
 
@@ -329,6 +354,7 @@ From most to least critical for Raycast replacement:
 ```
 
 **Breakdown:**
+
 - Core UI/UX: 95%
 - Built-in Commands: 70%
 - Extension System: 65%
@@ -362,6 +388,7 @@ From most to least critical for Raycast replacement:
 ## 📝 Changelog
 
 ### 2025-12-24 (v0.1.1)
+
 - Per-command hotkeys with SQLite storage and conflict detection (Dec 23)
 - Comprehensive settings system with 6 tabs
 - 9 professional themes with instant switching
@@ -373,6 +400,7 @@ From most to least critical for Raycast replacement:
 - **Parity:** 70% → 80%
 
 ### 2025-12-22 (v0.1.0)
+
 - Fixed `usePersistentState` to actually persist
 - Fixed React Reconciler stubs (no-op instead of throw)
 - Fixed TcpListener port conflict crash
@@ -383,11 +411,13 @@ From most to least critical for Raycast replacement:
 - **Parity:** 60% → 70%
 
 ### 2025-12-21
+
 - Created comprehensive audit and TODO
 - Identified critical gaps
 - Prioritized roadmap
 
 ### Earlier Work
+
 - ✅ AI chat with multi-provider support (OpenRouter, Ollama)
 - ✅ Snippet editing UI with terminal detection
 - ✅ File search indexing and watching
@@ -407,6 +437,7 @@ From most to least critical for Raycast replacement:
 ---
 
 **Legend:**
+
 - 🔴 Critical priority (needed for Raycast replacement)
 - 🟡 High priority (important but not blocking)
 - 🟢 Medium/Low priority (nice to have)

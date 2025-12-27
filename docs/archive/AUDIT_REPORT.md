@@ -1,4 +1,5 @@
 # Flareup Comprehensive Audit Report
+
 **Date:** 2025-12-21
 **Version:** 0.1.0
 **Goal:** Replace Raycast on Linux with similar or better functionality
@@ -10,6 +11,7 @@
 Flareup is an **ambitious and well-architected** Tauri-based launcher for Linux attempting to replicate Raycast's functionality. The codebase demonstrates solid engineering principles with modern technologies (Rust, Svelte 5, SQLite) and impressive feature coverage for a v0.1.0 project.
 
 **Key Strengths:**
+
 - Clean architecture with clear separation of concerns
 - Excellent UI/UX with strong keyboard navigation and accessibility
 - Comprehensive system integration (clipboard, snippets, AI, file search)
@@ -17,6 +19,7 @@ Flareup is an **ambitious and well-architected** Tauri-based launcher for Linux 
 - Active development with regular feature additions
 
 **Critical Gaps for Raycast Replacement:**
+
 1. **No window management** (move, resize, snap windows)
 2. **No system commands** (shutdown, sleep, volume control)
 3. **Limited global hotkey support** (only app toggle, no per-command hotkeys)
@@ -32,17 +35,20 @@ Flareup is an **ambitious and well-architected** Tauri-based launcher for Linux 
 ### 1.1 Bugs and Issues
 
 #### Critical
+
 - **CommandPalette.svelte:95** - Debug console.log leftover: `console.log('null haha');`
 - **17 Rust files** contain `.unwrap()` or `.expect()` calls that could panic in production
 - **N+1 Query Problem** in file_search/indexer.rs - queries DB for every file during indexing
 
 #### High Priority
+
 - **Noisy logging** - lib.rs logs every global shortcut event (pressed/released) to stdout
 - **Blocking operations** in async contexts (ai.rs database calls block async runtime)
 - **Hardcoded WebSocket port** (7265) in browser_extension.rs could cause conflicts
 - **Missing database indices** on frequently queried columns (created, updated_at, content_type)
 
 #### Medium Priority
+
 - Multiple TODO comments in TypeScript/Svelte files (none in Rust):
   - `assets.ts:32,52,57` - "TODO: better heuristic?"
   - `CommandDeeplinkConfirm.svelte:33` - "TODO: implement 'always open'"
@@ -59,6 +65,7 @@ Flareup is an **ambitious and well-architected** Tauri-based launcher for Linux 
 ```
 
 **Recommended Actions:**
+
 1. Remove all debug console.log statements
 2. Replace `.unwrap()` with proper error handling using `?` operator or `match`
 3. Add database indices for performance
@@ -71,44 +78,47 @@ Flareup is an **ambitious and well-architected** Tauri-based launcher for Linux 
 
 ### 2.1 Implemented Features ✅
 
-| Feature | Status | Quality | Notes |
-|---------|--------|---------|-------|
-| Command Palette | ✅ Implemented | High | Fuzzy search, frecency ranking |
-| Calculator | ✅ Implemented | High | SoulverCore integration |
-| Clipboard History | ✅ Implemented | High | Text, images, colors, encryption |
-| Snippets/Text Expansion | ✅ Implemented | Medium | Rich placeholders, terminal detection WIP |
-| AI Integration | ✅ Implemented | High | Multi-provider, conversation history |
-| File Search | ✅ Implemented | Medium | Custom indexing, limited scope |
-| Extensions API | 🟡 Partial | Medium | Basic compatibility, macOS limitations |
-| System Monitors | ✅ Implemented | High | CPU, memory, disk, battery |
-| Quick Toggles | 🟡 Partial | Medium | WiFi, Bluetooth, Dark Mode |
-| GitHub Integration | ✅ Implemented | Medium | OAuth, basic API support |
+| Feature                 | Status         | Quality | Notes                                     |
+| ----------------------- | -------------- | ------- | ----------------------------------------- |
+| Command Palette         | ✅ Implemented | High    | Fuzzy search, frecency ranking            |
+| Calculator              | ✅ Implemented | High    | SoulverCore integration                   |
+| Clipboard History       | ✅ Implemented | High    | Text, images, colors, encryption          |
+| Snippets/Text Expansion | ✅ Implemented | Medium  | Rich placeholders, terminal detection WIP |
+| AI Integration          | ✅ Implemented | High    | Multi-provider, conversation history      |
+| File Search             | ✅ Implemented | Medium  | Custom indexing, limited scope            |
+| Extensions API          | 🟡 Partial     | Medium  | Basic compatibility, macOS limitations    |
+| System Monitors         | ✅ Implemented | High    | CPU, memory, disk, battery                |
+| Quick Toggles           | 🟡 Partial     | Medium  | WiFi, Bluetooth, Dark Mode                |
+| GitHub Integration      | ✅ Implemented | Medium  | OAuth, basic API support                  |
 
 ### 2.2 Missing Critical Features ❌
 
-| Feature | Priority | Impact | Complexity |
-|---------|----------|--------|------------|
-| **Window Management** | 🔴 Critical | High | High - requires X11/Wayland APIs |
-| **System Commands** | 🔴 Critical | High | Medium - systemctl, amixer, loginctl |
-| **Global Hotkeys (per-command)** | 🔴 Critical | High | Medium - extend existing system |
-| **Menu Bar Extra** | 🟡 High | Medium | Medium - system tray integration |
-| **Fallback Commands** | 🟡 High | Low | Low - config system exists |
-| **Extension Hot Reload** | 🟡 High | Medium | Medium - file watcher needed |
-| **Trash Management** | 🟢 Medium | Low | Low - shell integration |
-| **Scheduled Actions** | 🟢 Medium | Medium | High - cron-like scheduler |
-| **Webhooks/Remote Triggers** | 🟢 Low | Medium | High - HTTP server needed |
+| Feature                          | Priority    | Impact | Complexity                           |
+| -------------------------------- | ----------- | ------ | ------------------------------------ |
+| **Window Management**            | 🔴 Critical | High   | High - requires X11/Wayland APIs     |
+| **System Commands**              | 🔴 Critical | High   | Medium - systemctl, amixer, loginctl |
+| **Global Hotkeys (per-command)** | 🔴 Critical | High   | Medium - extend existing system      |
+| **Menu Bar Extra**               | 🟡 High     | Medium | Medium - system tray integration     |
+| **Fallback Commands**            | 🟡 High     | Low    | Low - config system exists           |
+| **Extension Hot Reload**         | 🟡 High     | Medium | Medium - file watcher needed         |
+| **Trash Management**             | 🟢 Medium   | Low    | Low - shell integration              |
+| **Scheduled Actions**            | 🟢 Medium   | Medium | High - cron-like scheduler           |
+| **Webhooks/Remote Triggers**     | 🟢 Low      | Medium | High - HTTP server needed            |
 
 ### 2.3 Feature Details
 
 #### Window Management (CRITICAL MISSING)
+
 **Current State:** None
 **Raycast Features:**
+
 - Move window to left/right half, center, corners
 - Resize to specific dimensions
 - Move to next/previous desktop
 - Maximize, minimize, fullscreen
 
 **Implementation Path:**
+
 ```rust
 // For X11
 use x11rb::protocol::xproto::*;
@@ -125,10 +135,12 @@ async fn move_window_to_half(direction: String) -> Result<(), String> {
 ```
 
 **Recommended Tools:**
+
 - X11: `wmctrl`, `xdotool`, or direct x11rb API
 - Wayland: compositor-specific protocols (sway IPC, KWin D-Bus)
 
 #### System Commands (CRITICAL MISSING)
+
 **Current State:** System monitors only (read-only)
 **Needed Commands:**
 
@@ -151,6 +163,7 @@ async fn set_volume(level: u8) -> Result<(), String> {
 ```
 
 **Missing Commands:**
+
 - Sleep (`systemctl suspend`)
 - Restart (`systemctl reboot`)
 - Lock Screen (`loginctl lock-session`)
@@ -159,10 +172,12 @@ async fn set_volume(level: u8) -> Result<(), String> {
 - Eject drives (`udisksctl unmount -b /dev/sdX`)
 
 #### Global Hotkeys (CRITICAL MISSING)
+
 **Current State:** Single hotkey (Super+Alt+Space) to toggle app
 **Needed:** Per-command hotkey binding
 
 **Implementation:**
+
 ```rust
 // Extend lib.rs global shortcut system
 let mut hotkey_manager = state.hotkey_manager.lock().unwrap();
@@ -181,6 +196,7 @@ hotkey_manager.register("Cmd+Shift+S", "snippets")?;
 ### 3.1 Database Performance
 
 #### Missing Indices (High Impact)
+
 ```sql
 -- ai.rs
 CREATE INDEX IF NOT EXISTS idx_ai_generations_created ON ai_generations(created);
@@ -198,9 +214,11 @@ CREATE INDEX IF NOT EXISTS idx_snippets_keyword ON snippets(keyword);
 **Expected Impact:** 5-10x faster queries on large datasets (>1000 items)
 
 #### N+1 Query Problem (Critical)
+
 **File:** `file_search/indexer.rs:build_initial_index()`
 
 **Current (slow):**
+
 ```rust
 for entry in walker {
     if let Ok(Some(indexed_time)) = manager.get_file_last_modified(&path) {
@@ -210,6 +228,7 @@ for entry in walker {
 ```
 
 **Optimized:**
+
 ```rust
 // Load all file timestamps into HashMap once
 let existing_files = manager.get_all_file_timestamps()?;
@@ -224,6 +243,7 @@ for entry in walker {
 **Expected Impact:** 100x faster initial indexing for large file systems
 
 #### Full-Text Search for Snippets
+
 **Current:** `LIKE %...%` forces full table scan
 **Recommended:** Implement SQLite FTS5
 
@@ -239,6 +259,7 @@ CREATE VIRTUAL TABLE snippets_fts USING fts5(
 ### 3.2 Memory & Caching
 
 #### Coarse-Grained App Cache (Medium Impact)
+
 **File:** `cache.rs:is_stale()`
 
 **Issue:** Invalidates entire app cache if ANY .desktop file changes
@@ -252,6 +273,7 @@ CREATE VIRTUAL TABLE snippets_fts USING fts5(
 **Expected Impact:** 10x faster app cache updates
 
 #### Batch Database Operations (High Impact)
+
 **File:** `file_search/manager.rs:add_file()`
 
 **Current:** Single INSERT per file during indexing
@@ -270,6 +292,7 @@ tx.commit()?;
 ### 3.3 Blocking Operations
 
 #### CPU Monitor Blocking Sleep (High Priority)
+
 **File:** `system_monitors.rs:get_cpu_info()`
 
 ```rust
@@ -284,6 +307,7 @@ static CPU_INFO: Lazy<Arc<Mutex<CpuInfo>>> = Lazy::new(|| {
 ```
 
 #### Shell Command Overhead (Medium Priority)
+
 **File:** `quick_toggles.rs`
 
 **Current:** Spawns `nmcli`, `rfkill` processes on every call
@@ -305,6 +329,7 @@ async fn get_wifi_state() -> Result<bool, Error> {
 ### 3.4 Startup Time
 
 #### Sequential Database Initialization (Medium Impact)
+
 **File:** `lib.rs:setup()`
 
 **Current:** Sequential initialization of 5 managers
@@ -327,6 +352,7 @@ let results: Vec<_> = managers.into_par_iter()
 **Expected Impact:** 2-3x faster startup on multi-core systems
 
 **Alternative:** Lazy initialization on first access
+
 ```rust
 // Only initialize when actually needed
 static AI_MANAGER: OnceCell<AiUsageManager> = OnceCell::new();
@@ -337,6 +363,7 @@ static AI_MANAGER: OnceCell<AiUsageManager> = OnceCell::new();
 ## 4. UI/UX Analysis
 
 ### 4.1 Strengths
+
 - **Keyboard Navigation:** Comprehensive, all views fully keyboard accessible
 - **Focus Management:** Excellent with dedicated `focusManager` system
 - **Loading States:** Consistent loading indicators and spinners
@@ -345,26 +372,31 @@ static AI_MANAGER: OnceCell<AiUsageManager> = OnceCell::new();
 - **Design Consistency:** Strict adherence to design system via Bits UI
 
 ### 4.2 Accessibility
+
 **Rating: High (8/10)**
 
 **Pros:**
+
 - Complete keyboard control
 - Bits UI primitives handle ARIA automatically
 - Focus trap prevention
 - Semantic HTML structure
 
 **Recommendations:**
+
 1. Verify `BaseList.svelte` sets `role="listbox"` and `role="option"` for screen readers
 2. Add `aria-live` regions for dynamic content updates (AI streaming)
 3. Test with screen readers (Orca on Linux)
 4. Ensure color contrast meets WCAG AA standards (especially `text-muted-foreground`)
 
 ### 4.3 Responsive Design
+
 **Rating: Medium-High (Desktop Optimized)**
 
 Appropriately optimized for fixed-size desktop window. Not mobile-responsive, which is correct for this use case.
 
 ### 4.4 User Feedback
+
 **Rating: High (9/10)**
 
 - Comprehensive toast notifications
@@ -379,6 +411,7 @@ Appropriately optimized for fixed-size desktop window. Not mobile-responsive, wh
 ## 5. Architecture & Code Structure
 
 ### 5.1 Strengths
+
 - **Clean separation:** Frontend (Svelte) / Backend (Rust) / Sidecar (Node.js)
 - **Modern stack:** Svelte 5 runes, Tauri 2.x, async Rust
 - **Modular design:** Each feature is a separate module
@@ -388,12 +421,15 @@ Appropriately optimized for fixed-size desktop window. Not mobile-responsive, wh
 ### 5.2 Areas for Improvement
 
 #### Large Modules
+
 - **ai.rs:** 726 lines - should split into ai/mod.rs, ai/client.rs, ai/storage.rs
 - **extensions.rs:** 631 lines - split into extensions/loader.rs, extensions/compatibility.rs
 - **lib.rs:** 661 lines - extract window management, hotkey system into modules
 
 #### Error Handling
+
 **17 files** use `.unwrap()` or `.expect()` which can panic:
+
 - snippets/input_manager.rs
 - snippets/manager.rs
 - file_search/manager.rs
@@ -401,6 +437,7 @@ Appropriately optimized for fixed-size desktop window. Not mobile-responsive, wh
 - And 13 more...
 
 **Recommended Pattern:**
+
 ```rust
 // Replace
 let value = risky_operation().unwrap();
@@ -411,7 +448,9 @@ let value = risky_operation()
 ```
 
 #### Logging
+
 **Current:** Mix of `println!`, `eprintln!`, `console.log`, and no structured logging
+
 - `println!` used for info/status messages (~15 occurrences)
 - `eprintln!` used for error logging (~45 occurrences) - goes to stderr, slightly better
 - `console.log` in frontend (~10 occurrences, some debug leftovers)
@@ -429,6 +468,7 @@ error!("Failed to index {}: {}", path, err);
 ```
 
 **Benefits of tracing:**
+
 - Structured logging with spans and events
 - Configurable log levels at runtime
 - Integration with log aggregation tools
@@ -439,6 +479,7 @@ error!("Failed to index {}: {}", path, err);
 ## 6. Security Considerations
 
 ### 6.1 Good Practices ✅
+
 - System keyring for API keys (not plaintext)
 - Input validation for snippet placeholders
 - Extension compatibility checking before installation
@@ -447,6 +488,7 @@ error!("Failed to index {}: {}", path, err);
 ### 6.2 Potential Concerns ⚠️
 
 #### Global Keyboard Interception
+
 **File:** `snippets/input_manager.rs`
 
 Requires elevated permissions (udev rules) to read `/dev/input/eventX`. This is necessary for snippets but could be a security vector if compromised.
@@ -454,6 +496,7 @@ Requires elevated permissions (udev rules) to read `/dev/input/eventX`. This is 
 **Mitigation:** Already documented in README. Consider adding runtime permission checks.
 
 #### System Command Execution
+
 **File:** `quick_toggles.rs`, planned `system_commands.rs`
 
 Executes `nmcli`, `rfkill`, future `systemctl` commands. Ensure no user input is passed unsanitized.
@@ -462,11 +505,13 @@ Executes `nmcli`, `rfkill`, future `systemctl` commands. Ensure no user input is
 **Future:** Validate any dynamic parameters
 
 #### Extension Loading
+
 **File:** `extensions.rs`
 
 Loads and executes code from external sources (Raycast store).
 
 **Current Mitigation:**
+
 - Heuristic checks for macOS-only APIs
 - Sandboxed Node.js sidecar process
 - No native code execution
@@ -480,13 +525,16 @@ Loads and executes code from external sources (Raycast store).
 ### 7.1 Linux Desktop Fragmentation
 
 #### Wayland vs X11
+
 **Current:** Detects session type, uses appropriate APIs
 **Challenge:** Wayland support incomplete for:
+
 - Global hotkeys (works via evdev)
 - Window manipulation (compositor-dependent)
 - Selected text access (X11-only currently)
 
 **Recommendation:**
+
 1. Add Wayland compositor detection (Sway, GNOME, KDE)
 2. Implement compositor-specific protocols:
    - Sway: IPC socket
@@ -494,11 +542,13 @@ Loads and executes code from external sources (Raycast store).
    - KDE: KWin scripts
 
 #### Terminal Detection
+
 **File:** `snippets/input_manager.rs:123-162`
 
 Hardcoded list of 40+ terminal emulators. Brittle and requires constant updates.
 
 **Current:**
+
 ```rust
 const TERMINAL_EMULATORS: &[&str] = &[
     "gnome-terminal", "konsole", "alacritty", /* ... 37 more */
@@ -506,6 +556,7 @@ const TERMINAL_EMULATORS: &[&str] = &[
 ```
 
 **Recommended Approach:**
+
 ```rust
 // Check if process is a TTY
 fn is_terminal_window(class: &str) -> bool {
@@ -523,6 +574,7 @@ fn is_terminal_window(class: &str) -> bool {
 **Unknown:** Cinnamon, MATE, XFCE, i3, Sway, Hyprland
 
 **Recommendation:** Add detection and fallback scripts for:
+
 - Dark mode toggle
 - System notifications
 - Tray icon support
@@ -534,6 +586,7 @@ fn is_terminal_window(class: &str) -> bool {
 ### 8.1 Current State
 
 **Architecture:**
+
 ```
 Flareup (Tauri)
     ↓ MessagePack IPC
@@ -543,6 +596,7 @@ Raycast Extension (JavaScript/TypeScript)
 ```
 
 **Compatibility Layer:**
+
 - Path translation: `/Applications/` → `/usr/share/applications/`
 - AppleScript shimming (basic pattern matching)
 - Mock implementations of macOS-only APIs
@@ -550,9 +604,11 @@ Raycast Extension (JavaScript/TypeScript)
 ### 8.2 Limitations
 
 #### Fundamental Incompatibility
+
 **Issue:** Raycast extensions are macOS-centric by design
 
 **Blocked Features:**
+
 - Native Swift bindings (can't run on Linux)
 - AppleScript (no Linux equivalent)
 - macOS-specific paths and APIs
@@ -560,6 +616,7 @@ Raycast Extension (JavaScript/TypeScript)
 - Finder operations
 
 **Success Rate Estimate:**
+
 - Simple extensions (web APIs, HTTP): ~80% compatible
 - Medium complexity (file operations): ~50% compatible
 - macOS-dependent (system control): ~10% compatible
@@ -567,16 +624,19 @@ Raycast Extension (JavaScript/TypeScript)
 ### 8.3 Recommendations
 
 #### Short-term
+
 1. Improve compatibility detection (currently heuristic-based)
 2. Add explicit extension compatibility ratings in UI
 3. Create Linux-specific extension guidelines
 
 #### Long-term
+
 1. Fork popular extensions to create Linux versions
 2. Build native Flareup extension API (not Raycast-compatible)
 3. Create extension converter tool (Raycast → Flareup)
 
 **Example Native API:**
+
 ```typescript
 // flareup-sdk
 import { Flareup } from '@flareup/api';
@@ -602,13 +662,16 @@ export default function Command() {
 ## 9. Testing & Quality Assurance
 
 ### 9.1 Current Testing State
+
 **Analysis:** Frontend testing infrastructure exists with good coverage for key components
 
 **Existing Test Files:**
+
 - `src/lib/components/Extensions.svelte.test.ts` (293 lines) - Comprehensive tests for extension store
 - `src/lib/components/command-palette/CommandPalette.svelte.test.ts` (472 lines) - Full coverage of command palette
 
 **Testing Stack Already Configured:**
+
 - vitest (test runner)
 - @testing-library/svelte (component testing)
 - @testing-library/jest-dom (DOM assertions)
@@ -617,6 +680,7 @@ export default function Command() {
 - jsdom (DOM environment)
 
 **Gaps in Test Coverage:**
+
 - **Rust backend:** 0 test coverage (critical gap)
 - **Sidecar:** No tests for Node.js extension host
 - **Integration:** No Tauri <-> sidecar IPC tests
@@ -625,6 +689,7 @@ export default function Command() {
 ### 9.2 Recommended Test Expansion
 
 #### Rust Unit Tests (High Priority - Currently Missing)
+
 ```rust
 // src-tauri/src/snippets/engine_test.rs
 #[cfg(test)]
@@ -644,17 +709,20 @@ mod tests {
 ```
 
 **Critical Areas Needing Rust Tests:**
+
 - Snippet placeholder expansion (`snippets/engine.rs`)
 - Path translation (`extension_shims.rs`)
 - Frecency scoring (`frecency.rs`)
 - Calculator integration (`soulver.rs`)
 
 #### Integration Tests (Medium Priority)
+
 - Extension loading and execution
 - Database migrations
 - IPC communication between Tauri and sidecar
 
 #### E2E Tests (Low Priority)
+
 - Full user workflows using existing Playwright setup
 - Keyboard navigation
 - Extension installation
@@ -662,18 +730,21 @@ mod tests {
 ### 9.3 CI Pipeline Status
 
 **Existing CI:** `.github/workflows/nightly.yml`
+
 - Builds AppImage on schedule (daily at 23:15 UTC)
 - Handles Swift wrapper compilation
 - Caches Rust dependencies
 - Supports debug/release builds
 
 **Missing from CI:**
+
 - Test execution (`cargo test`, `pnpm test:unit`)
 - Linting (`cargo clippy`)
 - Format checking (`cargo fmt --check`)
 - PR-triggered builds (currently only nightly + manual)
 
 **Recommended CI Enhancement:**
+
 ```yaml
 # Add to nightly.yml or create new pr.yml
 - name: Run Rust tests
@@ -692,6 +763,7 @@ mod tests {
 ### 9.4 Quality Metrics
 
 **Recommended Additional Tools:**
+
 ```toml
 # Cargo.toml
 [dev-dependencies]
@@ -711,11 +783,13 @@ missing_docs = "warn"
 ### 10.1 Rust Dependencies
 
 **Heavy Dependencies (Potential Optimization):**
+
 - `sysinfo` (221 KB) - system monitoring
 - `tokio` (full features) - consider feature flags
 - `reqwest` (full features) - only need basic HTTP
 
 **Recommended:**
+
 ```toml
 # Instead of
 reqwest = { version = "0.11", features = ["json", "cookies", ...] }
@@ -727,6 +801,7 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 ### 10.2 JavaScript Dependencies
 
 **Bundle Size Analysis Recommended:**
+
 ```bash
 pnpm install -g source-map-explorer
 pnpm build
@@ -734,6 +809,7 @@ source-map-explorer dist/**/*.js
 ```
 
 **Potential Optimizations:**
+
 - Code splitting for extensions view
 - Lazy load settings view
 - Tree-shake unused Bits UI components
@@ -745,18 +821,21 @@ source-map-explorer dist/**/*.js
 ### 11.1 Missing Documentation
 
 **User Documentation:**
+
 - [ ] Quickstart guide
 - [ ] Keyboard shortcuts reference
 - [ ] Extension compatibility list
 - [ ] Troubleshooting guide
 
 **Developer Documentation:**
+
 - [ ] Architecture overview
 - [ ] Contributing guidelines
 - [ ] Extension development guide
 - [ ] API documentation (rustdoc)
 
 **Operational:**
+
 - [ ] Performance tuning guide
 - [ ] Database migration guide
 - [ ] Backup/restore procedures
@@ -788,21 +867,25 @@ docs/
 ### 12.1 Critical (Do First) 🔴
 
 1. **Remove Debug Code** (1 hour)
+
    - Remove `console.log('null haha')` from CommandPalette.svelte:95
    - Remove all debug console.log statements
    - Replace println! with proper logging
 
 2. **Fix Performance Bottlenecks** (1 day)
+
    - Add database indices (ai, clipboard, snippets tables)
    - Fix N+1 query in file_search/indexer.rs
    - Batch database operations in transactions
 
 3. **Implement Window Management** (2 weeks)
+
    - X11 support first (wmctrl or x11rb)
    - Wayland support (compositor-specific)
    - Commands: move to half, center, maximize, next desktop
 
 4. **Add System Commands** (1 week)
+
    - Sleep, restart, shutdown, lock
    - Volume control
    - Empty trash
@@ -816,23 +899,27 @@ docs/
 ### 12.2 High Priority (Next Phase) 🟡
 
 6. **Error Handling Audit** (3 days)
+
    - Replace `.unwrap()` with proper error handling
    - Add context to errors
    - Implement tracing for structured logging
 
 7. **Performance Optimization** (1 week)
+
    - CPU monitor background thread
    - Replace shell commands with native D-Bus
    - Parallel database initialization
    - Implement FTS5 for snippet search
 
 8. **Extension Compatibility** (2 weeks)
+
    - Improve detection heuristics
    - Add compatibility ratings in UI
    - Create Linux-specific extension guidelines
    - Fork and adapt top 10 popular extensions
 
 9. **Testing Infrastructure** (1 week)
+
    - Unit tests for critical modules
    - Integration tests for IPC
    - CI pipeline with automated testing
@@ -846,22 +933,26 @@ docs/
 ### 12.3 Medium Priority (Future Releases) 🟢
 
 11. **Module Refactoring** (3 days)
+
     - Split ai.rs into submodules
     - Split extensions.rs into loader/compatibility
     - Extract hotkey system from lib.rs
 
 12. **Terminal Detection Improvements** (2 days)
+
     - Heuristic-based fallback
     - Process TTY detection
     - User override settings
 
 13. **Documentation** (1 week)
+
     - User guide
     - Developer documentation
     - API documentation (rustdoc)
     - Extension development guide
 
 14. **UI/UX Polish** (1 week)
+
     - ARIA improvements for screen readers
     - Keyboard trap prevention audit
     - Color contrast verification
@@ -876,6 +967,7 @@ docs/
 ### 12.4 Low Priority (Nice to Have) 🔵
 
 16. **Advanced Features** (4+ weeks)
+
     - Keyboard Maestro-like macros
     - Scheduled actions/automations
     - Webhooks and remote triggers
@@ -894,24 +986,28 @@ docs/
 ## 13. Estimated Timeline
 
 ### Phase 1: Core Stability (2-3 weeks)
+
 - Fix debug code and logging
 - Performance optimizations
 - Error handling improvements
 - Basic testing infrastructure
 
 ### Phase 2: Raycast Parity (4-6 weeks)
+
 - Window management
 - System commands
 - Global hotkeys
 - Extension improvements
 
 ### Phase 3: Polish & Performance (2-3 weeks)
+
 - Wayland support improvements
 - UI/UX refinements
 - Documentation
 - Testing coverage
 
 ### Phase 4: Advanced Features (8-12 weeks)
+
 - Menu bar extra
 - Advanced automation
 - Native extension API
@@ -924,12 +1020,14 @@ docs/
 ## 14. Resource Requirements
 
 ### Development Team
+
 - **1 Senior Rust Developer** (backend, system integration)
 - **1 Frontend Developer** (Svelte, UI/UX)
 - **1 Linux Systems Expert** (X11/Wayland, desktop environments)
 - **Optional: 1 Technical Writer** (documentation)
 
 ### Infrastructure
+
 - CI/CD pipeline (GitHub Actions)
 - Test machines covering:
   - X11 (Ubuntu, Fedora)
@@ -944,6 +1042,7 @@ docs/
 Flareup has a **solid foundation** and demonstrates impressive engineering for a v0.1.0 project. The architecture is sound, the codebase is well-structured, and many features are already implemented with high quality.
 
 **Key Achievements:**
+
 - Excellent UI/UX and accessibility
 - Comprehensive system integration
 - Secure credential management
@@ -951,6 +1050,7 @@ Flareup has a **solid foundation** and demonstrates impressive engineering for a
 
 **Path to Success:**
 To become a viable Raycast replacement, focus on:
+
 1. **Critical missing features** (window management, system commands, global hotkeys)
 2. **Performance optimization** (database indexing, query optimization)
 3. **Code quality** (remove debug code, improve error handling, add tests)
@@ -959,6 +1059,7 @@ To become a viable Raycast replacement, focus on:
 With 3-6 months of focused development following the prioritized recommendations above, Flareup could achieve **feature parity with Raycast** and potentially exceed it with Linux-specific optimizations and native integrations.
 
 **Recommended Next Steps:**
+
 1. Review this audit with the team
 2. Create GitHub issues for each recommendation
 3. Set up project roadmap with milestones
@@ -973,6 +1074,7 @@ With 3-6 months of focused development following the prioritized recommendations
 **Last Updated:** 2025-12-21
 
 **Review Notes (Opus 4.5):**
+
 - Corrected testing section: Frontend tests exist (Extensions.svelte.test.ts, CommandPalette.svelte.test.ts)
 - Corrected CI section: nightly.yml exists, needs test steps added
 - Clarified TODO locations: TypeScript/Svelte only, no TODOs in Rust

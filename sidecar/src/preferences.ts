@@ -18,7 +18,9 @@ export class PreferencesStore {
 			if (fs.existsSync(this.preferencesPath)) {
 				const data = fs.readFileSync(this.preferencesPath, 'utf-8');
 				this.preferences = JSON.parse(data);
-				writeLog(`Loaded preferences from ${this.preferencesPath}: ${JSON.stringify(this.preferences)}`);
+				writeLog(
+					`Loaded preferences from ${this.preferencesPath}: ${JSON.stringify(this.preferences)}`
+				);
 			} else {
 				writeLog(`Preferences file not found at ${this.preferencesPath}`);
 			}

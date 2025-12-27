@@ -158,7 +158,7 @@ pub fn downloads_show_in_folder(path: String) -> Result<(), String> {
             ])
             .output();
 
-        if result.is_err() || !result.unwrap().status.success() {
+        if result.map_or(true, |output| !output.status.success()) {
             // Fall back to just opening the folder
             std::process::Command::new("xdg-open")
                 .arg(parent)
