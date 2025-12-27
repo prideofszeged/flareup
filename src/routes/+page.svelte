@@ -30,7 +30,7 @@
 	import AiChatView from '$lib/components/AiChatView.svelte';
 	import DmenuView from '$lib/components/DmenuView.svelte';
 	import DownloadsView from '$lib/components/DownloadsView.svelte';
-	import FloatingNotesWindow from '$lib/components/FloatingNotesWindow.svelte';
+	import QuickAiView from '$lib/components/QuickAiView.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -124,7 +124,7 @@
 	};
 
 	const aiChatPlugin: PluginInfo = {
-		title: 'Ask AI',
+		title: 'AI Chat',
 		description: 'Chat with AI to answer questions, write code, and more',
 		pluginTitle: 'AI',
 		pluginName: 'ai',
@@ -146,19 +146,6 @@
 		icon: fileSearchCommandIcon, // reusing file search icon for now
 		preferences: [],
 		mode: 'view',
-		owner: 'flare'
-	};
-
-	const floatingNotesPlugin: PluginInfo = {
-		title: 'Toggle Floating Notes',
-		description: 'Show/Hide the floating notes window',
-		pluginTitle: 'Notes',
-		pluginName: 'notes',
-		commandName: 'toggle-notes',
-		pluginPath: 'builtin:toggle-floating-notes',
-		icon: starsSquareIcon, // TODO: Notes icon
-		preferences: [],
-		mode: 'no-view',
 		owner: 'flare'
 	};
 
@@ -462,7 +449,6 @@
 		fileSearchPlugin,
 		aiChatPlugin,
 		downloadsPlugin,
-		floatingNotesPlugin,
 		openLatestDownloadPlugin,
 		copyLatestDownloadPlugin,
 		settingsPlugin,
@@ -496,20 +482,15 @@
 		quicklinkToEdit,
 		snippetToEdit,
 		snippetsForImport,
-		commandToConfirm
+		commandToConfirm,
+		quickAiPrompt,
+		quickAiSelection
 	} = $derived(viewManager);
 
 	let showLogViewer = $state(false);
 	let dmenuMode = $state(false);
-	let isFloatingNotesWindow = $state(false);
 
 	onMount(() => {
-		// Check if we are the floating notes window
-		if (window.location.pathname === '/floating-notes') {
-			isFloatingNotesWindow = true;
-			return;
-		}
-
 		// Listen for dmenu mode activation FIRST (before any other init)
 		const unlistenDmenu = listen('dmenu-mode', () => {
 			dmenuMode = true;
@@ -650,9 +631,7 @@
 	/>
 {/if}
 
-{#if isFloatingNotesWindow}
-	<FloatingNotesWindow />
-{:else if dmenuMode}
+{#if dmenuMode}
 	<DmenuView />
 {:else if currentView === 'command-palette'}
 	<CommandPalette plugins={allPlugins} onRunPlugin={viewManager.runPlugin} />
@@ -663,6 +642,7 @@
 		onSavePreferences={handleSavePreferences}
 		onGetPreferences={handleGetPreferences}
 		{currentPreferences}
+		onRefreshPlugins={onExtensionInstalled}
 	/>
 {:else if currentView === 'extensions-store'}
 	<Extensions onBack={viewManager.showCommandPalette} onInstall={onExtensionInstalled} />
@@ -694,6 +674,12 @@
 	<AiChatView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'downloads'}
 	<DownloadsView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'quick-ai'}
+	<QuickAiView
+		prompt={quickAiPrompt}
+		selection={quickAiSelection}
+		onClose={viewManager.hideQuickAi}
+	/>
 {/if}
 
 {#if showLogViewer}

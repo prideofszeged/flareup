@@ -1,9 +1,9 @@
 mod ai;
+mod ai_commands;
 mod ai_presets;
+mod ai_tools; // AI function calling tools
 mod aliases;
 mod app;
-mod floating_notes;
-mod script_commands;
 mod auto_start;
 mod browser_extension;
 mod cache;
@@ -18,13 +18,16 @@ mod extension_shims;
 mod extensions;
 mod file_search;
 mod filesystem;
+mod floating_notes;
 mod frecency;
 mod hotkey_manager;
 mod integrations;
 mod oauth;
 mod quick_toggles;
 mod quicklinks;
+mod script_commands;
 mod settings;
+mod shim_registry;
 mod snippets;
 mod soulver;
 mod store;
@@ -36,13 +39,12 @@ mod window_management;
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
 use crate::{app::App, cache::AppCache};
 use ai::AiUsageManager;
-use ai_presets::AiPresetManager;
 use aliases::AliasManager;
 use browser_extension::WsState;
 use floating_notes::FloatingNotesManager;
 use frecency::FrecencyManager;
-use script_commands::ScriptCommandManager;
 use quicklinks::QuicklinkManager;
+use script_commands::ScriptCommandManager;
 use selection::get_text;
 use snippets::engine::ExpansionEngine;
 use snippets::manager::SnippetManager;
@@ -50,8 +52,11 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+};
 use tauri::{Emitter, Manager};
-use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder};
 
 use dmenu::DmenuSession;
 
@@ -307,6 +312,49 @@ fn shim_run_applescript(script: String) -> extension_shims::ShimResult {
 #[tauri::command]
 fn shim_get_system_info() -> std::collections::HashMap<String, String> {
     extension_shims::SystemShim::get_system_info()
+}
+
+// Shim registry commands (Mason-like tool installation)
+#[tauri::command]
+fn shim_scan_extension(extension_code: String) -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry
+        .find_tools_in_code(&extension_code)
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+#[tauri::command]
+fn shim_get_all_tools() -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry.all().into_iter().cloned().collect()
+}
+
+#[tauri::command]
+fn shim_check_tool_installed(test_command: String) -> bool {
+    shim_registry::is_tool_installed(&test_command)
+}
+
+#[tauri::command]
+fn shim_get_shim_dir() -> String {
+    shim_registry::get_shim_dir().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+fn shim_install_wrapper_scripts(tool_names: Vec<String>) -> Result<(), String> {
+    let registry = shim_registry::ToolRegistry::new();
+    let mappings: Vec<&shim_registry::ToolMapping> = tool_names
+        .iter()
+        .filter_map(|name| registry.get(name))
+        .collect();
+
+    shim_registry::install_shims(&mappings)
+}
+
+#[tauri::command]
+fn shim_detect_distro() -> String {
+    format!("{:?}", shim_registry::detect_distro())
 }
 
 // System monitor commands
@@ -620,6 +668,12 @@ pub fn run() {
             shim_translate_path,
             shim_run_applescript,
             shim_get_system_info,
+            shim_scan_extension,
+            shim_get_all_tools,
+            shim_check_tool_installed,
+            shim_get_shim_dir,
+            shim_install_wrapper_scripts,
+            shim_detect_distro,
             monitor_get_cpu,
             monitor_get_memory,
             monitor_get_disks,
@@ -655,7 +709,7 @@ pub fn run() {
             ai::get_conversation,
             ai::update_conversation,
             ai::delete_conversation,
-            ai_presets::get_ai_presets,
+            ai_presets::list_ai_presets,
             ai_presets::create_ai_preset,
             ai_presets::update_ai_preset,
             ai_presets::delete_ai_preset,
@@ -699,7 +753,23 @@ pub fn run() {
             settings::save_app_settings,
             settings::reset_app_settings,
             auto_start::set_auto_start_enabled,
-            auto_start::get_auto_start_enabled
+            auto_start::get_auto_start_enabled,
+            ai_commands::create_ai_command,
+            ai_commands::list_ai_commands,
+            ai_commands::get_ai_command,
+            ai_commands::update_ai_command,
+            ai_commands::delete_ai_command,
+            ai_commands::substitute_placeholders,
+            ai_commands::get_available_placeholders,
+            ai_presets::create_ai_preset,
+            ai_presets::list_ai_presets,
+            ai_presets::get_ai_preset,
+            ai_presets::update_ai_preset,
+            ai_presets::delete_ai_preset,
+            // AI Tools
+            ai_tools::get_ai_tool_definitions,
+            ai_tools::check_model_supports_tools,
+            ai_tools::execute_ai_tool
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -713,7 +783,6 @@ pub fn run() {
             app.manage(FrecencyManager::new(app.handle())?);
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
-            app.manage(AiPresetManager::new(app.handle())?);
             app.manage(AliasManager::new(app.handle())?);
             app.manage(ScriptCommandManager::new(app.handle()));
             app.manage(FloatingNotesManager::new(app.handle())?);
@@ -814,7 +883,7 @@ pub fn run() {
                         }
                     }
                     tauri::WindowEvent::Focused(false) => {
-                        tracing::info!("Window lost focus");
+                        tracing::debug!("Window lost focus");
                         if let Some(window) = app.get_webview_window("main") {
                             // Check if close on blur is enabled in settings
                             if let Some(settings_manager) =
@@ -822,24 +891,26 @@ pub fn run() {
                             {
                                 match settings_manager.get_settings() {
                                     Ok(settings) => {
-                                        tracing::info!(
-                                            "Close on blur setting: {}",
-                                            settings.close_on_blur
-                                        );
                                         if settings.close_on_blur {
-                                            tracing::info!("Hiding window due to close on blur");
-                                            let _ = window.hide();
+                                            // Debounce: wait a moment and check if still unfocused
+                                            // This prevents false triggers from UI interactions like
+                                            // clicking settings tabs or select dropdowns
+                                            let window_clone = window.clone();
+                                            tauri::async_runtime::spawn(async move {
+                                                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                                                // Re-check if window is still unfocused
+                                                if let Ok(focused) = window_clone.is_focused() {
+                                                    if !focused {
+                                                        tracing::debug!("Hiding window due to close on blur (after debounce)");
+                                                        let _ = window_clone.hide();
+                                                    }
+                                                }
+                                            });
                                         }
                                     }
                                     Err(e) => {
                                         tracing::error!("Failed to get settings: {}", e);
                                     }
-                                }
-                            } else {
-                                tracing::warn!("Settings manager not available");
-                                if !cfg!(debug_assertions) {
-                                    // Fallback: hide in release mode if settings not available
-                                    let _ = window.hide();
                                 }
                             }
                         }

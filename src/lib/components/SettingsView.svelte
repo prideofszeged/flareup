@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PluginInfo } from '@flare/protocol';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import AiSettingsView from './AiSettingsView.svelte';
+	import AiSettings from './settings/AiSettings.svelte';
 	import HotkeysSettings from './HotkeysSettings.svelte';
 	import ExtensionsSettings from './settings/ExtensionsSettings.svelte';
 	import GeneralSettings from './settings/GeneralSettings.svelte';
@@ -17,10 +17,17 @@
 		onSavePreferences: (pluginName: string, values: Record<string, unknown>) => void;
 		onGetPreferences: (pluginName: string) => void;
 		currentPreferences: Record<string, unknown>;
+		onRefreshPlugins?: () => void;
 	};
 
-	let { plugins, onBack, onSavePreferences, onGetPreferences, currentPreferences }: Props =
-		$props();
+	let {
+		plugins,
+		onBack,
+		onSavePreferences,
+		onGetPreferences,
+		currentPreferences,
+		onRefreshPlugins
+	}: Props = $props();
 
 	let activeTab = $state('general');
 
@@ -97,6 +104,7 @@
 				{onSavePreferences}
 				{onGetPreferences}
 				{currentPreferences}
+				{onRefreshPlugins}
 			/>
 		</Tabs.Content>
 
@@ -104,8 +112,8 @@
 			<HotkeysSettings {plugins} {onBack} />
 		</Tabs.Content>
 
-		<Tabs.Content value="ai">
-			<AiSettingsView />
+		<Tabs.Content value="ai" class="h-full">
+			<AiSettings />
 		</Tabs.Content>
 
 		<Tabs.Content value="advanced">

@@ -7,10 +7,11 @@
 	import BaseList from '../BaseList.svelte';
 	import { Button } from '../ui/button';
 	import path from 'path';
-	import { open as openDialog } from '@tauri-apps/plugin-dialog';
+	import { open as openDialog, confirm } from '@tauri-apps/plugin-dialog';
 	import { appsStore } from '$lib/apps.svelte';
 	import PasswordInput from '../PasswordInput.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
+	import { invoke } from '@tauri-apps/api/core';
 
 	type Props = {
 		plugins: PluginInfo[];
@@ -18,6 +19,7 @@
 		onSavePreferences: (pluginName: string, values: Record<string, unknown>) => void;
 		onGetPreferences: (pluginName: string) => void;
 		currentPreferences: Record<string, unknown>;
+		onRefreshPlugins?: () => void;
 	};
 
 	type DisplayListItem = {
@@ -29,8 +31,14 @@
 		compatibilityWarningCount: number;
 	};
 
-	let { plugins, onBack, onSavePreferences, onGetPreferences, currentPreferences }: Props =
-		$props();
+	let {
+		plugins,
+		onBack,
+		onSavePreferences,
+		onGetPreferences,
+		currentPreferences,
+		onRefreshPlugins
+	}: Props = $props();
 
 	const { pluginToSelectInSettings } = $derived(viewManager);
 
@@ -148,9 +156,40 @@
 		}
 	});
 
-	function handleSave() {
+	let isSaving = $state(false);
+
+	async function handleSave() {
 		if (selectedItem) {
-			onSavePreferences(selectedItem.data.pluginName, preferenceValues);
+			isSaving = true;
+			try {
+				onSavePreferences(selectedItem.data.pluginName, preferenceValues);
+				// Show HUD feedback
+				await invoke('show_hud', { title: 'Settings saved' });
+			} finally {
+				isSaving = false;
+			}
+		}
+	}
+
+	async function handleUninstall() {
+		if (!selectedItem || selectedItem.type !== 'extension') return;
+
+		const confirmed = await confirm(
+			`Are you sure you want to uninstall "${selectedItem.data.pluginTitle}"? This will remove the extension and all its data.`,
+			{
+				title: 'Uninstall Extension',
+				kind: 'warning'
+			}
+		);
+
+		if (confirmed) {
+			try {
+				await invoke('uninstall_extension', { slug: selectedItem.data.pluginName });
+				selectedIndex = 0;
+				onRefreshPlugins?.();
+			} catch (error) {
+				console.error('Failed to uninstall extension:', error);
+			}
 		}
 	}
 
@@ -245,7 +284,14 @@
 						</p>
 					</div>
 
-					<Button onclick={handleSave}>Save</Button>
+					<div class="flex gap-2">
+						{#if selectedItem.type === 'extension'}
+							<Button variant="destructive" onclick={handleUninstall}>Uninstall</Button>
+						{/if}
+						<Button onclick={handleSave} disabled={isSaving}>
+							{isSaving ? 'Saving...' : 'Save'}
+						</Button>
+					</div>
 				</div>
 				{#if selectedWarnings.length > 0}
 					<div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm">

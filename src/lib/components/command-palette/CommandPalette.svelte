@@ -10,13 +10,21 @@
 	import { appsStore } from '$lib/apps.svelte';
 	import { frecencyStore } from '$lib/frecency.svelte';
 	import { quicklinksStore } from '$lib/quicklinks.svelte';
-	import { useCommandPaletteItems, useCommandPaletteActions } from '$lib/command-palette.svelte';
+	import {
+		useCommandPaletteItems,
+		useCommandPaletteActions,
+		type AiCommand
+	} from '$lib/command-palette.svelte';
 	import CommandPaletteActionBar from './ActionBar.svelte';
 	import { focusManager } from '$lib/focus.svelte';
 	import HeaderInput from '../HeaderInput.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import MainLayout from '../layout/MainLayout.svelte';
 	import Header from '../layout/Header.svelte';
+	import { settingsStore } from '$lib/settings.svelte';
+	import { viewManager } from '$lib/viewManager.svelte';
+	import Icon from '../Icon.svelte';
+	import { invoke } from '@tauri-apps/api/core';
 
 	type Props = {
 		plugins: PluginInfo[];
@@ -112,6 +120,7 @@
 	const actions = useCommandPaletteActions({
 		selectedItem: () => selectedItem,
 		onRunPlugin,
+		onExecuteAiCommand: handleExecuteAiCommand,
 		resetState,
 		focusArgumentInput
 	});
@@ -142,7 +151,62 @@
 			focusManager.releaseFocus('quicklink-argument');
 		}
 	}
+
+	async function toggleCloseOnBlur() {
+		settingsStore.settings.closeOnBlur = !settingsStore.settings.closeOnBlur;
+		await settingsStore.saveSettings();
+	}
+
+	const closeOnBlurEnabled = $derived(settingsStore.settings.closeOnBlur);
+
+	// Execute an AI command by triggering Quick AI with substituted prompt
+	async function handleExecuteAiCommand(command: AiCommand) {
+		try {
+			// Get selection and clipboard for placeholder substitution
+			const selection = await invoke<string>('get_selected_text').catch(() => '');
+			const clipboard = await invoke<{ text?: string }>('clipboard_read').catch(() => null);
+
+			const substitutedPrompt = await invoke<string>('substitute_placeholders', {
+				promptTemplate: command.promptTemplate,
+				selection: selection || null,
+				clipboard: clipboard?.text || null,
+				input: searchText || null,
+				browserText: null
+			});
+
+			// Store the prompt in viewManager and show Quick AI
+			viewManager.quickAiPrompt = substitutedPrompt;
+			viewManager.quickAiSelection = selection || '';
+			viewManager.showQuickAi(substitutedPrompt, selection || '');
+			resetState();
+		} catch (error) {
+			console.error('Failed to execute AI command:', error);
+		}
+	}
+
+	// Tab key triggers Quick AI when there's text in the search input AND input is focused
+	function handleSearchKeydown(e: KeyboardEvent) {
+		// Only intercept Tab if search input is focused and has text
+		if (e.key === 'Tab' && searchText.trim() && document.activeElement === searchInputEl) {
+			console.log('[CommandPalette] Tab detected with focused input and text, triggering Quick AI');
+			e.preventDefault();
+			e.stopPropagation();
+			// Fire off the async operation without awaiting
+			(async () => {
+				// Get selected text from the system if available
+				let selection = '';
+				try {
+					selection = await invoke<string>('get_selected_text');
+				} catch {
+					// Silently ignore - no selection available
+				}
+				viewManager.showQuickAi(searchText.trim(), selection);
+			})();
+		}
+	}
 </script>
+
+<svelte:window on:keydown|capture={handleSearchKeydown} />
 
 <MainLayout>
 	{#snippet header()}
@@ -187,6 +251,21 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Pin/Unpin toggle for close-on-blur -->
+			<button
+				onclick={toggleCloseOnBlur}
+				tabindex={-1}
+				class="hover:bg-accent ml-2 flex shrink-0 items-center rounded p-1.5 transition-colors"
+				title={closeOnBlurEnabled
+					? 'Pin window (disable close on blur)'
+					: 'Unpin window (enable close on blur)'}
+			>
+				<Icon
+					icon={closeOnBlurEnabled ? 'pin-16' : 'pin-disabled-16'}
+					class="size-4 {closeOnBlurEnabled ? 'text-muted-foreground' : 'text-primary'}"
+				/>
+			</button>
 		</Header>
 	{/snippet}
 
@@ -251,39 +330,18 @@
 								</span>
 							{/snippet}
 						</ListItemBase>
-					{:else if item.type === 'ai-preset'}
+					{:else if item.type === 'ai-command'}
 						<ListItemBase
 							title={item.data.name}
-							subtitle="AI Command"
-							icon={item.data.icon ?? 'stars-16'}
-							{isSelected}
-							{onclick}
-						>
-							{#snippet accessories()}
-								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
-									AI Preset
-								</span>
-							{/snippet}
-						</ListItemBase>
-					{:else if item.type === 'ask-ai'}
-						<ListItemBase
-							title="Ask AI"
-							subtitle={item.data.query}
+							subtitle={item.data.promptTemplate.substring(0, 60) +
+								(item.data.promptTemplate.length > 60 ? '...' : '')}
 							icon="stars-16"
 							{isSelected}
 							{onclick}
-						/>
-					{:else if item.type === 'script-command'}
-						<ListItemBase
-							title={item.data.title}
-							subtitle={item.data.packageName ?? 'Script'}
-							icon={item.data.icon ?? 'terminal-16'}
-							{isSelected}
-							{onclick}
 						>
 							{#snippet accessories()}
 								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
-									Script
+									AI Command
 								</span>
 							{/snippet}
 						</ListItemBase>
@@ -300,4 +358,3 @@
 		</div>
 	{/snippet}
 </MainLayout>
-```
