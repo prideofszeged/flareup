@@ -273,6 +273,15 @@ class ViewManager {
 				return;
 		}
 
+		// Debug logging for plugin execution
+		console.log('[ViewManager] Running plugin:', {
+			pluginPath: plugin.pluginPath,
+			commandName: plugin.commandName,
+			title: plugin.title,
+			pluginName: plugin.pluginName,
+			mode: plugin.mode
+		});
+
 		uiStore.setCurrentRunningPlugin(plugin);
 
 		const hasAiAccess = await invoke<boolean>('ai_can_access');
@@ -287,6 +296,8 @@ class ViewManager {
 		if (plugin.mode !== 'no-view') {
 			uiStore.resetForNewPlugin();
 			this.currentView = 'plugin-running';
+		} else {
+			console.log('[ViewManager] Plugin has no-view mode, will run in background via sidecar');
 		}
 	};
 

@@ -731,6 +731,12 @@ impl AppleScriptShim {
     }
 
     fn activate_application(app_name: &str) -> ShimResult {
+        // Special handling for System Preferences (macOS) -> Linux settings
+        let app_lower = app_name.to_lowercase();
+        if app_lower.contains("system preferences") || app_lower.contains("system settings") {
+            return Self::open_system_settings();
+        }
+
         // Try to launch the application using the desktop file
         let desktop_name = app_name.to_lowercase();
 
@@ -760,6 +766,91 @@ impl AppleScriptShim {
                     },
                 }
             }
+        }
+    }
+
+    fn open_system_settings() -> ShimResult {
+        // Try various settings apps in order of preference
+        let settings_commands = [
+            // KDE Plasma
+            ("systemsettings5", vec![]),
+            ("systemsettings", vec![]),
+            // GNOME - but only if running GNOME
+            ("gnome-control-center", vec![]),
+            // XFCE
+            ("xfce4-settings-manager", vec![]),
+            // LXDE/LXQt
+            ("lxqt-config", vec![]),
+            // Cinnamon
+            ("cinnamon-settings", vec![]),
+            // MATE
+            ("mate-control-center", vec![]),
+            // Generic fallback - try opening settings scheme
+            ("xdg-open", vec!["gnome-control-center:"]),
+        ];
+
+        // Detect desktop environment
+        let de = std::env::var("XDG_CURRENT_DESKTOP")
+            .or_else(|_| std::env::var("DESKTOP_SESSION"))
+            .unwrap_or_default()
+            .to_lowercase();
+
+        // Prioritize based on detected DE
+        let preferred_command = if de.contains("kde") || de.contains("plasma") {
+            "systemsettings5"
+        } else if de.contains("gnome") || de.contains("ubuntu") {
+            "gnome-control-center"
+        } else if de.contains("xfce") {
+            "xfce4-settings-manager"
+        } else if de.contains("lxqt") {
+            "lxqt-config"
+        } else if de.contains("cinnamon") {
+            "cinnamon-settings"
+        } else if de.contains("mate") {
+            "mate-control-center"
+        } else {
+            ""
+        };
+
+        // Try preferred command first
+        if !preferred_command.is_empty() {
+            if let Ok(output) = Command::new(preferred_command).output() {
+                if output.status.success() {
+                    return ShimResult {
+                        success: true,
+                        output: Some("Opened system settings".to_string()),
+                        error: None,
+                    };
+                }
+            }
+        }
+
+        // Try all commands as fallback
+        for (cmd, args) in &settings_commands {
+            let result = if args.is_empty() {
+                Command::new(cmd).output()
+            } else {
+                Command::new(cmd).args(args).output()
+            };
+
+            if let Ok(output) = result {
+                if output.status.success() {
+                    return ShimResult {
+                        success: true,
+                        output: Some("Opened system settings".to_string()),
+                        error: None,
+                    };
+                }
+            }
+        }
+
+        ShimResult {
+            success: false,
+            output: None,
+            error: Some(
+                "Could not open system settings. No compatible settings application found."
+                    .to_string(),
+            ),
         }
     }
 

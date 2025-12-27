@@ -68,6 +68,14 @@ impl DesktopFileManager {
             return None;
         }
 
+        // Check OnlyShowIn and NotShowIn to filter by desktop environment
+        if !Self::should_show_in_current_desktop(
+            &desktop_file.entry.only_show_in,
+            &desktop_file.entry.not_show_in,
+        ) {
+            return None;
+        }
+
         if let EntryType::Application(app_fields) = desktop_file.entry.entry_type {
             if app_fields.exec.is_some() && !desktop_file.entry.name.default.is_empty() {
                 return Some(
@@ -85,6 +93,63 @@ impl DesktopFileManager {
             }
         }
         None
+    }
+
+    /// Check if an app should be shown in the current desktop environment
+    fn should_show_in_current_desktop(
+        only_show_in: &Option<Vec<String>>,
+        not_show_in: &Option<Vec<String>>,
+    ) -> bool {
+        // Get current desktop environment(s)
+        let current_desktops = Self::get_current_desktops();
+
+        // If OnlyShowIn is specified, the app should only show if current desktop matches
+        if let Some(allowed_desktops) = only_show_in {
+            if !allowed_desktops.is_empty() {
+                // Check if any current desktop matches any allowed desktop
+                let matches = current_desktops.iter().any(|current| {
+                    allowed_desktops
+                        .iter()
+                        .any(|allowed| current.eq_ignore_ascii_case(allowed))
+                });
+                if !matches {
+                    return false;
+                }
+            }
+        }
+
+        // If NotShowIn is specified, the app should NOT show if current desktop matches
+        if let Some(excluded_desktops) = not_show_in {
+            if !excluded_desktops.is_empty() {
+                let excluded = current_desktops.iter().any(|current| {
+                    excluded_desktops
+                        .iter()
+                        .any(|excluded| current.eq_ignore_ascii_case(excluded))
+                });
+                if excluded {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Get the current desktop environment(s)
+    fn get_current_desktops() -> Vec<String> {
+        // XDG_CURRENT_DESKTOP can contain multiple values separated by colons
+        // e.g., "Unity:GNOME" or "X-Cinnamon"
+        if let Ok(desktop) = env::var("XDG_CURRENT_DESKTOP") {
+            return desktop.split(':').map(|s| s.to_string()).collect();
+        }
+
+        // Fallback to DESKTOP_SESSION
+        if let Ok(session) = env::var("DESKTOP_SESSION") {
+            return vec![session];
+        }
+
+        // Unknown desktop - show all apps
+        vec![]
     }
 
     fn deduplicate_and_sort_apps(apps: Vec<App>) -> Vec<App> {

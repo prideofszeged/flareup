@@ -64,7 +64,23 @@
 		return `${Math.floor(seconds)} second${seconds !== 1 ? 's' : ''} ago`;
 	}
 
-	const isInstalled = $derived(uiStore.pluginList.some((p) => p.pluginName === extension.name));
+	const isInstalled = $derived.by(() => {
+		const installed = uiStore.pluginList.some((p) => p.pluginName === extension.name);
+		// Debug logging for install detection
+		console.log('[ExtensionDetail] Checking install status:', {
+			extensionName: extension.name,
+			extensionTitle: extension.title,
+			isInstalled: installed,
+			matchingPlugins: uiStore.pluginList
+				.filter(
+					(p) =>
+						p.pluginName === extension.name ||
+						p.pluginTitle?.toLowerCase().includes(extension.title.toLowerCase())
+				)
+				.map((p) => ({ pluginName: p.pluginName, pluginTitle: p.pluginTitle }))
+		});
+		return installed;
+	});
 
 	const installedCommandsInfo = $derived(
 		isInstalled ? uiStore.pluginList.filter((p) => p.pluginName === extension.name) : []
