@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { settingsStore } from '$lib/settings.svelte';
+	import { settingsStore, type AppSettings } from '$lib/settings.svelte';
 	import SettingSection from './SettingSection.svelte';
 	import SettingItem from './SettingItem.svelte';
 	import * as Select from '$lib/components/ui/select';
@@ -49,7 +49,7 @@
 			'system'
 		];
 		if (value && validThemes.includes(value)) {
-			settingsStore.updateSetting('theme', value as any);
+			settingsStore.updateSetting('theme', value as AppSettings['theme']);
 			applyTheme(value);
 		}
 	}
@@ -99,139 +99,133 @@
 	<h2 class="mb-6 text-lg font-semibold">General Settings</h2>
 
 	<SettingSection title="Appearance" description="Customize how Flareup looks">
-		{#snippet children()}
-			<SettingItem label="Theme">
-				{#snippet control()}
-					<Select.Root value={settings.theme} onValueChange={handleThemeChange} type="single">
-						<Select.Trigger class="w-40">
-							{formatThemeName(settings.theme)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="system">System</Select.Item>
-							<Select.Item value="light">Light</Select.Item>
-							<Select.Item value="dark">Dark</Select.Item>
-							<Select.Item value="tokyo-night">Tokyo Night</Select.Item>
-							<Select.Item value="dracula">Dracula</Select.Item>
-							<Select.Item value="nord">Nord</Select.Item>
-							<Select.Item value="catppuccin">Catppuccin</Select.Item>
-							<Select.Item value="gruvbox">Gruvbox</Select.Item>
-							<Select.Item value="one-dark">One Dark</Select.Item>
-						</Select.Content>
-					</Select.Root>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Theme">
+			{#snippet control()}
+				<Select.Root value={settings.theme} onValueChange={handleThemeChange} type="single">
+					<Select.Trigger class="w-40">
+						{formatThemeName(settings.theme)}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="system">System</Select.Item>
+						<Select.Item value="light">Light</Select.Item>
+						<Select.Item value="dark">Dark</Select.Item>
+						<Select.Item value="tokyo-night">Tokyo Night</Select.Item>
+						<Select.Item value="dracula">Dracula</Select.Item>
+						<Select.Item value="nord">Nord</Select.Item>
+						<Select.Item value="catppuccin">Catppuccin</Select.Item>
+						<Select.Item value="gruvbox">Gruvbox</Select.Item>
+						<Select.Item value="one-dark">One Dark</Select.Item>
+					</Select.Content>
+				</Select.Root>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Font Size">
-				{#snippet control()}
-					<Select.Root value={settings.fontSize} onValueChange={handleFontSizeChange} type="single">
-						<Select.Trigger class="w-40">
-							{settings.fontSize.charAt(0).toUpperCase() + settings.fontSize.slice(1)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="small">Small</Select.Item>
-							<Select.Item value="medium">Medium</Select.Item>
-							<Select.Item value="large">Large</Select.Item>
-						</Select.Content>
-					</Select.Root>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem label="Font Size">
+			{#snippet control()}
+				<Select.Root value={settings.fontSize} onValueChange={handleFontSizeChange} type="single">
+					<Select.Trigger class="w-40">
+						{settings.fontSize.charAt(0).toUpperCase() + settings.fontSize.slice(1)}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="small">Small</Select.Item>
+						<Select.Item value="medium">Medium</Select.Item>
+						<Select.Item value="large">Large</Select.Item>
+					</Select.Content>
+				</Select.Root>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 
 	<SettingSection title="Search" description="Configure search behavior">
-		{#snippet children()}
-			<SettingItem label="Enable Search History" description="Remember your recent searches">
-				{#snippet control()}
-					<Checkbox
-						checked={settings.enableSearchHistory}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('enableSearchHistory', checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Enable Search History" description="Remember your recent searches">
+			{#snippet control()}
+				<Checkbox
+					checked={settings.enableSearchHistory}
+					onCheckedChange={(checked) =>
+						settingsStore.updateSetting('enableSearchHistory', checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Results Limit" description="Maximum number of results to show">
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.searchResultsLimit}
-						onchange={handleSearchLimitChange}
-						class="w-24"
-						min="1"
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Results Limit" description="Maximum number of results to show">
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.searchResultsLimit}
+					onchange={handleSearchLimitChange}
+					class="w-24"
+					min="1"
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Fuzzy Search Sensitivity">
-				{#snippet control()}
-					<Select.Root
-						value={settings.fuzzySearchSensitivity}
-						onValueChange={handleFuzzySearchChange}
-						type="single"
-					>
-						<Select.Trigger class="w-40">
-							{settings.fuzzySearchSensitivity.charAt(0).toUpperCase() +
-								settings.fuzzySearchSensitivity.slice(1)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="low">Low</Select.Item>
-							<Select.Item value="medium">Medium</Select.Item>
-							<Select.Item value="high">High</Select.Item>
-						</Select.Content>
-					</Select.Root>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem label="Fuzzy Search Sensitivity">
+			{#snippet control()}
+				<Select.Root
+					value={settings.fuzzySearchSensitivity}
+					onValueChange={handleFuzzySearchChange}
+					type="single"
+				>
+					<Select.Trigger class="w-40">
+						{settings.fuzzySearchSensitivity.charAt(0).toUpperCase() +
+							settings.fuzzySearchSensitivity.slice(1)}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="low">Low</Select.Item>
+						<Select.Item value="medium">Medium</Select.Item>
+						<Select.Item value="high">High</Select.Item>
+					</Select.Content>
+				</Select.Root>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 
 	<SettingSection title="Window Behavior" description="Control how the window behaves">
-		{#snippet children()}
-			<SettingItem label="Close on Blur" description="Hide the window when clicking outside">
-				{#snippet control()}
-					<Checkbox
-						checked={settings.closeOnBlur}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('closeOnBlur', checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Close on Blur" description="Hide the window when clicking outside">
+			{#snippet control()}
+				<Checkbox
+					checked={settings.closeOnBlur}
+					onCheckedChange={(checked) =>
+						settingsStore.updateSetting('closeOnBlur', checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem
-				label="Remember Window Position"
-				description="Save window position between sessions"
-			>
-				{#snippet control()}
-					<Checkbox
-						checked={settings.rememberWindowPosition}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('rememberWindowPosition', checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem
+			label="Remember Window Position"
+			description="Save window position between sessions"
+		>
+			{#snippet control()}
+				<Checkbox
+					checked={settings.rememberWindowPosition}
+					onCheckedChange={(checked) =>
+						settingsStore.updateSetting('rememberWindowPosition', checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Default Width" description="Default window width in pixels">
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.defaultWindowWidth}
-						onchange={handleWindowWidthChange}
-						class="w-24"
-						min="400"
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Default Width" description="Default window width in pixels">
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.defaultWindowWidth}
+					onchange={handleWindowWidthChange}
+					class="w-24"
+					min="400"
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Default Height" description="Default window height in pixels">
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.defaultWindowHeight}
-						onchange={handleWindowHeightChange}
-						class="w-24"
-						min="300"
-					/>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem label="Default Height" description="Default window height in pixels">
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.defaultWindowHeight}
+					onchange={handleWindowHeightChange}
+					class="w-24"
+					min="300"
+				/>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 </div>

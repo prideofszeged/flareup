@@ -113,7 +113,7 @@
 					</div>
 				</div>
 				<div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-					{#each cpu.cores as core}
+					{#each cpu.cores as core (core.index)}
 						<div class="text-xs">
 							<div class="flex justify-between">
 								<span class="text-muted-foreground">Core {core.index}</span>
@@ -156,7 +156,7 @@
 			<div class="rounded-lg border p-4">
 				<h3 class="mb-3 text-lg font-semibold">Disk Usage</h3>
 				<div class="space-y-3">
-					{#each disks as disk}
+					{#each disks as disk (disk.mount_point)}
 						<div>
 							<div class="flex items-center justify-between text-sm">
 								<div>
@@ -187,7 +187,7 @@
 			<div class="rounded-lg border p-4">
 				<h3 class="mb-3 text-lg font-semibold">Network Interfaces</h3>
 				<div class="space-y-2">
-					{#each network as net}
+					{#each network as net (net.interface)}
 						<div class="text-sm">
 							<div class="font-medium">{net.interface}</div>
 							<div class="text-muted-foreground mt-1 grid grid-cols-2 gap-2 text-xs">

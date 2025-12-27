@@ -44,6 +44,7 @@ class ViewManager {
 	currentView = $state<ViewState>('command-palette');
 	quicklinkToEdit = $state<Quicklink | undefined>(undefined);
 	snippetToEdit = $state<Snippet | undefined>(undefined);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Flexible import format
 	snippetsForImport = $state<any[] | null>(null);
 	commandToConfirm = $state<PluginInfo | null>(null);
 	pluginToSelectInSettings = $state<string | undefined>(undefined);
@@ -93,6 +94,7 @@ class ViewManager {
 		this.currentView = 'create-snippet-form';
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Flexible import format
 	showImportSnippets = (snippets?: any[]) => {
 		this.snippetsForImport = snippets ?? null;
 		this.currentView = 'import-snippets';
@@ -196,20 +198,22 @@ class ViewManager {
 			case 'builtin:sleep':
 				await invoke('execute_power_command', { command: 'sleep' });
 				return;
-			case 'builtin:shutdown':
+			case 'builtin:shutdown': {
 				// Show confirmation dialog
 				const shutdownConfirm = confirm('Are you sure you want to shut down your computer?');
 				if (shutdownConfirm) {
 					await invoke('execute_power_command', { command: 'shutdown' });
 				}
 				return;
-			case 'builtin:restart':
+			}
+			case 'builtin:restart': {
 				// Show confirmation dialog
 				const restartConfirm = confirm('Are you sure you want to restart your computer?');
 				if (restartConfirm) {
 					await invoke('execute_power_command', { command: 'restart' });
 				}
 				return;
+			}
 			case 'builtin:volume-up':
 				await invoke('volume_up');
 				return;
@@ -219,7 +223,7 @@ class ViewManager {
 			case 'builtin:toggle-mute':
 				await invoke('toggle_mute');
 				return;
-			case 'builtin:empty-trash':
+			case 'builtin:empty-trash': {
 				// Show confirmation dialog
 				const trashConfirm = confirm(
 					'Are you sure you want to permanently delete all items in trash?'
@@ -229,6 +233,7 @@ class ViewManager {
 					await invoke('show_hud', { title: `Removed ${count} items from trash` });
 				}
 				return;
+			}
 			// Window management
 			case 'builtin:snap-left':
 				await invoke('snap_active_window', { position: 'leftHalf' });

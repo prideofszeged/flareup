@@ -3,7 +3,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Pencil, Plus, Trash2 } from '@lucide/svelte';
-	import { aiStore } from '$lib/ai.svelte';
+	import { aiStore, type AiPreset } from '$lib/ai.svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 
 	let isDialogOpen = $state(false);
@@ -20,7 +20,7 @@
 		isDialogOpen = true;
 	}
 
-	function openEdit(preset: any) {
+	function openEdit(preset: AiPreset) {
 		editingId = preset.id;
 		name = preset.name;
 		template = preset.template;
@@ -60,7 +60,7 @@
 	</div>
 
 	<div class="grid gap-4">
-		{#each aiStore.presets as preset}
+		{#each aiStore.presets as preset (preset.id)}
 			<div class="border-border flex items-center justify-between rounded-lg border p-4">
 				<div>
 					<div class="font-medium">{preset.name}</div>

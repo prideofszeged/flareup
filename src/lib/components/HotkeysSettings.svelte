@@ -203,7 +203,7 @@
 	</div>
 
 	<div class="hotkey-list">
-		{#each plugins as plugin}
+		{#each plugins as plugin (plugin.pluginPath)}
 			{@const hotkey = getHotkey(plugin.pluginPath)}
 			<div
 				class="bg-background border-border hover:border-muted-foreground flex items-center justify-between rounded-lg border p-4 transition-all hover:shadow-md"

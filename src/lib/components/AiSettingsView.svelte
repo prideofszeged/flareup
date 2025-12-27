@@ -259,7 +259,7 @@
 								'http://localhost:11434/v1'}?</Select.Item
 						>
 					{:else}
-						{#each ollamaModels as model}
+						{#each ollamaModels as model (model)}
 							<Select.Item value={model}>{model}</Select.Item>
 						{/each}
 					{/if}
@@ -312,7 +312,7 @@
 				</div>
 				{#if allowedDirectories.length > 0}
 					<div class="mt-2 flex flex-wrap gap-2">
-						{#each allowedDirectories as dir}
+						{#each allowedDirectories as dir (dir)}
 							<div class="bg-muted flex items-center gap-1 rounded-md px-2 py-1 text-sm">
 								<span class="font-mono text-xs">{dir}</span>
 								<button

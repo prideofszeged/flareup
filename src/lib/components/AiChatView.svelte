@@ -8,7 +8,6 @@
 		Stars,
 		MessageSquare,
 		Plus,
-		List,
 		Trash2,
 		ChevronLeft,
 		ChevronRight,
@@ -18,13 +17,11 @@
 	} from '@lucide/svelte';
 	import { focusManager } from '$lib/focus.svelte';
 	import { viewManager } from '$lib/viewManager.svelte';
-	import HeaderInput from './HeaderInput.svelte';
 	import MainLayout from './layout/MainLayout.svelte';
 	import Header from './layout/Header.svelte';
 	import ActionBar from './nodes/shared/ActionBar.svelte';
 	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
 	import SvelteMarked from 'svelte-marked';
-	import { Button } from './ui/button';
 
 	type Props = {
 		onBack: () => void;
@@ -92,7 +89,6 @@
 	let availableModels = $state<{ id: string; label: string }[]>([
 		{ id: 'default', label: 'Default Model' }
 	]);
-	let isLoadingModels = $state(false);
 
 	$effect(() => {
 		if (focusManager.activeScope === 'main-input') {
@@ -180,7 +176,6 @@
 	}
 
 	async function loadModels() {
-		isLoadingModels = true;
 		try {
 			// Try to get Ollama models
 			const ollamaModels = await invoke<string[]>('get_ollama_models', { baseUrl: '' });
@@ -197,8 +192,6 @@
 				{ id: 'openai/gpt-4o', label: 'GPT-4o' },
 				{ id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' }
 			];
-		} finally {
-			isLoadingModels = false;
 		}
 	}
 
@@ -442,7 +435,7 @@
 							>
 								No preset
 							</button>
-							{#each presets as preset}
+							{#each presets as preset (preset.id)}
 								<button
 									type="button"
 									class="hover:bg-accent w-full px-3 py-2 text-left text-sm {selectedPreset?.id ===
@@ -490,7 +483,7 @@
 						<div class="text-muted-foreground bg-popover sticky top-0 border-b px-3 py-1.5 text-xs">
 							Available Models
 						</div>
-						{#each availableModels as model}
+						{#each availableModels as model (model.id)}
 							<button
 								type="button"
 								class="hover:bg-accent w-full px-3 py-2 text-left text-sm {selectedModel ===
@@ -542,8 +535,7 @@
 						{#if conversations.length === 0}
 							<div class="text-muted-foreground p-4 text-center text-sm">No conversations yet</div>
 						{:else}
-							{#each conversations as conversation}
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
+							{#each conversations as conversation (conversation.id)}
 								<div
 									onclick={() => loadConversation(conversation.id)}
 									onkeydown={(e) => e.key === 'Enter' && loadConversation(conversation.id)}
@@ -605,7 +597,7 @@
 							</p>
 						</div>
 					{:else}
-						{#each messages as message}
+						{#each messages as message, i (i)}
 							<div
 								class="flex flex-col gap-2 {message.role === 'user'
 									? 'ml-12 items-end'
@@ -628,7 +620,7 @@
 								<!-- Tool calls display -->
 								{#if message.toolCalls && message.toolCalls.length > 0}
 									<div class="mt-2 space-y-2">
-										{#each message.toolCalls as toolCall}
+										{#each message.toolCalls as toolCall (toolCall.id)}
 											<div
 												class="border-border/50 bg-background/50 flex items-start gap-2 rounded-lg border p-2 text-xs"
 											>

@@ -160,7 +160,8 @@
 	});
 
 	$effect(() => {
-		[searchText, filter];
+		// Track dependencies for reset
+		void [searchText, filter];
 		if (isInitialMount) return;
 
 		untrack(() => {

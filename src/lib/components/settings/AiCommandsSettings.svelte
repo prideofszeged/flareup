@@ -193,11 +193,11 @@
 				<textarea
 					id="command-prompt"
 					bind:value={formPromptTemplate}
-					placeholder="Explain this code in simple terms: {'{'}selection{'}'}"
+					placeholder="Explain this code in simple terms: &#123;selection&#125;"
 					class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[120px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 				></textarea>
 				<div class="flex flex-wrap gap-2">
-					{#each placeholders as placeholder}
+					{#each placeholders as placeholder (placeholder.name)}
 						<button
 							onclick={() => insertPlaceholder(placeholder.name)}
 							class="bg-muted hover:bg-muted/80 rounded-md px-2 py-1 text-xs transition-colors"
@@ -230,7 +230,7 @@
 						</button>
 						{#if showOutputActionDropdown}
 							<div class="bg-popover absolute z-50 mt-1 w-full rounded-md border shadow-lg">
-								{#each outputActionOptions as option}
+								{#each outputActionOptions as option (option.value)}
 									<button
 										type="button"
 										class="hover:bg-accent w-full px-3 py-2 text-left text-sm {formOutputAction ===
@@ -270,7 +270,7 @@
 						</button>
 						{#if showCreativityDropdown}
 							<div class="bg-popover absolute z-50 mt-1 w-full rounded-md border shadow-lg">
-								{#each creativityOptions as option}
+								{#each creativityOptions as option (option.value)}
 									<button
 										type="button"
 										class="hover:bg-accent w-full px-3 py-2 text-left text-sm {formCreativity ===
@@ -331,7 +331,7 @@
 							{:else if ollamaModels.length === 0}
 								<div class="text-muted-foreground px-3 py-2 text-sm">No Ollama models found</div>
 							{:else}
-								{#each ollamaModels as model}
+								{#each ollamaModels as model (model)}
 									<button
 										type="button"
 										class="hover:bg-accent w-full px-3 py-2 text-left text-sm {formModel === model
@@ -371,7 +371,7 @@
 				</div>
 			{:else}
 				<div class="space-y-2">
-					{#each commands as command}
+					{#each commands as command (command.id)}
 						<div
 							class="border-border/50 hover:bg-muted/50 group flex items-center gap-3 rounded-lg border p-3 transition-colors"
 						>

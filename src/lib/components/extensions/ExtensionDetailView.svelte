@@ -138,26 +138,6 @@
 			isUninstalling = false;
 		}
 	}
-
-	const actions = $derived.by(() => {
-		if (isInstalled)
-			return [
-				{ title: 'Show Commands', handler: () => {} },
-				{
-					title: isUninstalling ? 'Uninstalling...' : 'Uninstall Extension',
-					handler: handleUninstall,
-					disabled: isUninstalling
-				}
-			];
-
-		return [
-			{
-				title: isInstalling ? 'Installing...' : 'Install Extension',
-				handler: onInstall,
-				disabled: isInstalling
-			}
-		];
-	});
 </script>
 
 <div class="flex grow flex-col gap-6 overflow-x-hidden overflow-y-auto p-6">

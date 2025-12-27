@@ -69,134 +69,128 @@
 		title="Developer Options"
 		description="Settings for developers and advanced users"
 	>
-		{#snippet children()}
-			<SettingItem label="Developer Mode" description="Enable advanced debugging features">
-				{#snippet control()}
-					<Checkbox
-						checked={settings.developerMode}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('developerMode', checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Developer Mode" description="Enable advanced debugging features">
+			{#snippet control()}
+				<Checkbox
+					checked={settings.developerMode}
+					onCheckedChange={(checked) =>
+						settingsStore.updateSetting('developerMode', checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem
-				label="Show Extension Console"
-				description="Display console output from extensions"
-			>
-				{#snippet control()}
-					<Checkbox
-						checked={settings.showExtensionConsole}
-						onCheckedChange={(checked) =>
-							settingsStore.updateSetting('showExtensionConsole', checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem
+			label="Show Extension Console"
+			description="Display console output from extensions"
+		>
+			{#snippet control()}
+				<Checkbox
+					checked={settings.showExtensionConsole}
+					onCheckedChange={(checked) =>
+						settingsStore.updateSetting('showExtensionConsole', checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Debug Log Level" description="Control verbosity of logging">
-				{#snippet control()}
-					<Select.Root
-						value={settings.debugLogLevel}
-						onValueChange={handleLogLevelChange}
-						type="single"
-					>
-						<Select.Trigger class="w-40">
-							{settings.debugLogLevel.charAt(0).toUpperCase() + settings.debugLogLevel.slice(1)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="error">Error</Select.Item>
-							<Select.Item value="warn">Warning</Select.Item>
-							<Select.Item value="info">Info</Select.Item>
-							<Select.Item value="debug">Debug</Select.Item>
-							<Select.Item value="trace">Trace</Select.Item>
-						</Select.Content>
-					</Select.Root>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem label="Debug Log Level" description="Control verbosity of logging">
+			{#snippet control()}
+				<Select.Root
+					value={settings.debugLogLevel}
+					onValueChange={handleLogLevelChange}
+					type="single"
+				>
+					<Select.Trigger class="w-40">
+						{settings.debugLogLevel.charAt(0).toUpperCase() + settings.debugLogLevel.slice(1)}
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Item value="error">Error</Select.Item>
+						<Select.Item value="warn">Warning</Select.Item>
+						<Select.Item value="info">Info</Select.Item>
+						<Select.Item value="debug">Debug</Select.Item>
+						<Select.Item value="trace">Trace</Select.Item>
+					</Select.Content>
+				</Select.Root>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 
 	<SettingSection title="Performance" description="Configure performance and resource usage">
-		{#snippet children()}
-			<SettingItem
-				label="Max Concurrent Extensions"
-				description="Maximum number of extensions that can run simultaneously"
-			>
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.maxConcurrentExtensions}
-						onchange={handleMaxExtensionsChange}
-						class="w-24"
-						min="1"
-						max="20"
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem
+			label="Max Concurrent Extensions"
+			description="Maximum number of extensions that can run simultaneously"
+		>
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.maxConcurrentExtensions}
+					onchange={handleMaxExtensionsChange}
+					class="w-24"
+					min="1"
+					max="20"
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem label="Cache Size (MB)" description="Maximum cache size in megabytes">
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.cacheSizeMb}
-						onchange={handleCacheSizeChange}
-						class="w-24"
-						min="10"
-						max="1000"
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem label="Cache Size (MB)" description="Maximum cache size in megabytes">
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.cacheSizeMb}
+					onchange={handleCacheSizeChange}
+					class="w-24"
+					min="10"
+					max="1000"
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem
-				label="Indexing Throttle (ms)"
-				description="Delay between file indexing operations"
-			>
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.indexingThrottleMs}
-						onchange={handleThrottleChange}
-						class="w-24"
-						min="0"
-						max="5000"
-					/>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem
+			label="Indexing Throttle (ms)"
+			description="Delay between file indexing operations"
+		>
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.indexingThrottleMs}
+					onchange={handleThrottleChange}
+					class="w-24"
+					min="0"
+					max="5000"
+				/>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 
 	<SettingSection
 		title="System Integration"
 		description="Configure how Flareup integrates with your system"
 	>
-		{#snippet children()}
-			<SettingItem
-				label="Auto-Start on Login"
-				description="Launch Flareup automatically when you log in"
-			>
-				{#snippet control()}
-					<Checkbox
-						checked={settings.autoStartOnLogin}
-						onCheckedChange={(checked) => handleAutoStartChange(checked === true)}
-					/>
-				{/snippet}
-			</SettingItem>
+		<SettingItem
+			label="Auto-Start on Login"
+			description="Launch Flareup automatically when you log in"
+		>
+			{#snippet control()}
+				<Checkbox
+					checked={settings.autoStartOnLogin}
+					onCheckedChange={(checked) => handleAutoStartChange(checked === true)}
+				/>
+			{/snippet}
+		</SettingItem>
 
-			<SettingItem
-				label="Clipboard History Retention"
-				description="Number of days to keep clipboard history"
-			>
-				{#snippet control()}
-					<Input
-						type="number"
-						value={settings.clipboardHistoryRetentionDays}
-						onchange={handleRetentionChange}
-						class="w-24"
-						min="1"
-						max="365"
-					/>
-				{/snippet}
-			</SettingItem>
-		{/snippet}
+		<SettingItem
+			label="Clipboard History Retention"
+			description="Number of days to keep clipboard history"
+		>
+			{#snippet control()}
+				<Input
+					type="number"
+					value={settings.clipboardHistoryRetentionDays}
+					onchange={handleRetentionChange}
+					class="w-24"
+					min="1"
+					max="365"
+				/>
+			{/snippet}
+		</SettingItem>
 	</SettingSection>
 </div>

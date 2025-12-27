@@ -2,7 +2,7 @@
 	import AiSettingsView from '../AiSettingsView.svelte';
 	import AiCommandsSettings from './AiCommandsSettings.svelte';
 	import AiPresetsSettings from './AiPresetsSettings.svelte';
-	import { Settings, Wand2, Stars, Wrench } from '@lucide/svelte';
+	import { Settings, Wand2, Stars } from '@lucide/svelte';
 
 	type AiSection = 'general' | 'commands' | 'presets' | 'tools';
 	let activeSection = $state<AiSection>('general');
@@ -21,7 +21,7 @@
 			AI Settings
 		</h2>
 		<nav class="space-y-1">
-			{#each sections as section}
+			{#each sections as section (section.id)}
 				{@const IconComponent = section.icon}
 				<button
 					type="button"

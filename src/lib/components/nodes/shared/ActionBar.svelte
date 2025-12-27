@@ -103,7 +103,7 @@
 		{#if actions && actions.length > 1}
 			<div class="peer order-3">
 				<ActionMenu>
-					{#each actions as action, i}
+					{#each actions as action, i (action.title)}
 						<DropdownMenu.Item
 							class="rounded-md p-2 text-left {action.style === 'destructive'
 								? 'text-destructive focus:text-destructive-foreground focus:bg-destructive'

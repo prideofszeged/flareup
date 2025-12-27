@@ -246,7 +246,7 @@
 				{error}
 			</div>
 		{:else}
-			{#each messages as message}
+			{#each messages as message, i (i)}
 				<div class="flex flex-col gap-1 {message.role === 'user' ? 'items-end' : 'items-start'}">
 					<div
 						class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm {message.role === 'user'

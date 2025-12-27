@@ -45,7 +45,7 @@
 </script>
 
 <div class="flex gap-0.5">
-	{#each symbols as symbol}
+	{#each symbols as symbol, i (i)}
 		<Kbd>{symbol}</Kbd>
 	{/each}
 </div>

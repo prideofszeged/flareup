@@ -199,7 +199,7 @@
 							{:else if ollamaModels.length === 0}
 								<div class="text-muted-foreground px-3 py-2 text-sm">No Ollama models found</div>
 							{:else}
-								{#each ollamaModels as model}
+								{#each ollamaModels as model (model)}
 									<button
 										type="button"
 										class="hover:bg-accent w-full px-3 py-2 text-left text-sm {formModel === model
@@ -266,7 +266,7 @@
 				</div>
 			{:else}
 				<div class="space-y-2">
-					{#each presets as preset}
+					{#each presets as preset (preset.id)}
 						<div
 							class="border-border/50 hover:bg-muted/50 group flex items-center gap-3 rounded-lg border p-3 transition-colors"
 						>

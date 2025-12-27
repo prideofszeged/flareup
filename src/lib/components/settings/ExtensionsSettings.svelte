@@ -43,6 +43,7 @@
 	const { pluginToSelectInSettings } = $derived(viewManager);
 
 	let selectedIndex = $state(0);
+	// eslint-disable-next-line svelte/prefer-writable-derived -- mutable form copy that resets on plugin change
 	let preferenceValues = $state<Record<string, unknown>>({});
 	let searchText = $state('');
 	const { apps } = $derived(appsStore);
@@ -51,7 +52,6 @@
 		// This effect syncs the local preference values with the prop.
 		// It's necessary because the form is a mutable copy of the preferences
 		// that needs to be reset when the selected plugin changes.
-		// eslint-disable-next-line svelte/prefer-writable-derived
 		preferenceValues = { ...currentPreferences };
 	});
 
@@ -297,7 +297,7 @@
 					<div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
 						<p class="font-medium text-amber-200">Potential compatibility issues detected</p>
 						<ul class="text-foreground mt-2 space-y-1 text-xs">
-							{#each selectedWarnings.slice(0, 4) as warning}
+							{#each selectedWarnings.slice(0, 4) as warning (warning.commandName)}
 								<li>
 									<strong>{warning.commandTitle ?? warning.commandName}:</strong>
 									<span class="text-muted-foreground ml-1">{warning.reason}</span>

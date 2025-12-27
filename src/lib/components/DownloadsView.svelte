@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount, tick, untrack } from 'svelte';
-	import { Loader2, FolderOpen, Trash2, ExternalLink, LayoutGrid, List } from '@lucide/svelte';
+	import { Loader2, LayoutGrid, List } from '@lucide/svelte';
 	import ListItemBase from './nodes/shared/ListItemBase.svelte';
 	import * as Select from './ui/select';
 	import ActionBar from './nodes/shared/ActionBar.svelte';
@@ -170,15 +170,6 @@
 		}
 	};
 
-	const handleClearHistory = async () => {
-		try {
-			await invoke('downloads_clear_history');
-			resetAndFetch();
-		} catch (e) {
-			console.error('Failed to clear history:', e);
-		}
-	};
-
 	onMount(() => {
 		const container = listContainerEl;
 		if (!container) return;
@@ -197,7 +188,8 @@
 	});
 
 	$effect(() => {
-		[searchText, filter, sortBy];
+		// Track dependencies for reset
+		void [searchText, filter, sortBy];
 		if (isInitialMount) return;
 
 		untrack(() => {
@@ -301,7 +293,7 @@
 				{:else}
 					<!-- Grid View -->
 					<div class="grid grid-cols-3 gap-4 p-4">
-						{#each allItems as item, index}
+						{#each allItems as item, index (item.path)}
 							<button
 								onclick={() => (selectedIndex = index)}
 								ondblclick={() => handleOpen(item)}

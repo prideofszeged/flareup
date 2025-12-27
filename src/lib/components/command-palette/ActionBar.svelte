@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable svelte/no-unused-props -- All handlers are used via barActions.* */
 	import type { UnifiedItem } from '$lib/command-palette.svelte';
 	import ActionBar from '$lib/components/nodes/shared/ActionBar.svelte';
 	import type { ActionDefinition } from '../nodes/shared/actions';

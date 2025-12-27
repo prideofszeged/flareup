@@ -44,7 +44,6 @@
 	let isDetailLoading = $state(false);
 	let expandedImageUrl = $state<string | null>(null);
 	let isInstalling = $state(false);
-	let isUninstalling = $state(false);
 	let vlistInstance = $state<VListHandle | null>(null);
 	let showConfirmationDialog = $state(false);
 	let confirmationViolations = $state<Violation[]>([]);
@@ -281,26 +280,6 @@
 			console.error('Forced installation failed', e);
 		} finally {
 			isInstalling = false;
-		}
-	}
-
-	async function handleUninstall() {
-		const extensionToUninstall = detailedExtension || selectedExtension;
-		if (!extensionToUninstall || isUninstalling) return;
-
-		isUninstalling = true;
-		try {
-			await invoke('uninstall_extension', {
-				slug: extensionToUninstall.name
-			});
-			// Refresh the plugin list
-			onInstall();
-			// Go back to list view
-			selectedExtension = null;
-		} catch (e) {
-			console.error('Uninstall failed', e);
-		} finally {
-			isUninstalling = false;
 		}
 	}
 

@@ -8,6 +8,7 @@ import type { App } from '$lib/apps.svelte';
 import type { Quicklink } from '$lib/quicklinks.svelte';
 import { focusManager } from '$lib/focus.svelte';
 import type { AiPreset } from '$lib/ai.svelte';
+import type { ScriptCommand } from '$lib/script-commands.svelte';
 
 const appsStore = vi.hoisted(() => ({
 	apps: [] as App[],
@@ -52,7 +53,7 @@ vi.mock('$lib/ai.svelte', () => ({
 }));
 
 const scriptCommandsStore = vi.hoisted(() => ({
-	commands: [] as any[]
+	commands: [] as ScriptCommand[]
 }));
 vi.mock('$lib/script-commands.svelte', () => ({
 	scriptCommandsStore

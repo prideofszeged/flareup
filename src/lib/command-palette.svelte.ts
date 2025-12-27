@@ -11,6 +11,7 @@ import { aliasesStore } from './aliases.svelte';
 export type UnifiedItem = {
 	type: 'calculator' | 'plugin' | 'app' | 'quicklink' | 'ai-command';
 	id: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Union type with discriminated access
 	data: any;
 	score: number;
 	alias?: string;
@@ -67,6 +68,7 @@ export function useCommandPaletteItems({
 	selectedQuicklinkForArgument
 }: UseCommandPaletteItemsArgs) {
 	const allSearchableItems = $derived.by(() => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Union type with discriminated access
 		const items: { type: 'plugin' | 'app' | 'quicklink' | 'ai-command'; id: string; data: any }[] =
 			[];
 		items.push(...plugins().map((p) => ({ type: 'plugin', id: p.pluginPath, data: p }) as const));
@@ -232,7 +234,6 @@ export function useCommandPaletteItems({
 		}
 
 		const frecencyMap = new Map(frecencyData().map((item) => [item.itemId, item]));
-		const now = Date.now() / 1000;
 		const gravity = 1.8;
 
 		items.forEach((item) => {
