@@ -72,7 +72,7 @@
 					handler: barActions.handleConfigureCommand
 				},
 				{
-					title: 'Assign Alias',
+					title: selectedItem.alias ? `Change Alias (${selectedItem.alias})` : 'Assign Alias',
 					handler: handleAddAlias
 				}
 			];
@@ -104,7 +104,7 @@
 					handler: barActions.handleHideApp
 				},
 				{
-					title: 'Assign Alias',
+					title: selectedItem.alias ? `Change Alias (${selectedItem.alias})` : 'Assign Alias',
 					handler: handleAddAlias
 				}
 			];
@@ -117,7 +117,7 @@
 					handler: barActions.handleEnter
 				},
 				{
-					title: 'Assign Alias',
+					title: selectedItem.alias ? `Change Alias (${selectedItem.alias})` : 'Assign Alias',
 					handler: handleAddAlias
 				}
 			];
@@ -128,5 +128,5 @@
 </script>
 
 {#if selectedItem}
-	<ActionBar {actions} />
+	<ActionBar {actions} alias={selectedItem.alias} />
 {/if}

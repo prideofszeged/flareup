@@ -18,6 +18,8 @@
 		actions?: ActionDefinition[];
 		/** Optional override to render the primary action button. Prefer not providing if possible. */
 		primaryAction?: Snippet<[{ props: ButtonProps }]>;
+		/** Optional alias to display in the footer */
+		alias?: string;
 
 		toast?: ToastType | null;
 		onToastAction?: (toastId: number, actionType: 'primary' | 'secondary') => void;
@@ -27,6 +29,7 @@
 		title,
 		icon,
 		actions,
+		alias,
 		toast = null,
 		onToastAction,
 		primaryAction: primaryActionOverride
@@ -67,10 +70,15 @@
 <footer class="bg-card flex h-10 shrink-0 items-center border-t px-2">
 	{#if toast}
 		<Toast {toast} {onToastAction} />
-	{:else if title || icon}
+	{:else if title || icon || alias}
 		<div class="flex min-w-0 items-center gap-2.5 pl-1">
 			{#if icon}
 				<Icon {icon} class="size-5 shrink-0" />
+			{/if}
+			{#if alias}
+				<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 rounded px-1.5 py-0.5 text-xs font-medium">
+					{alias}
+				</span>
 			{/if}
 			{#if title}
 				{#if typeof title === 'string'}

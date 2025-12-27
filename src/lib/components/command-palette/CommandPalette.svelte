@@ -299,7 +299,7 @@
 							{#snippet accessories()}
 								{#if item.alias}
 									<span
-										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+										class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
 									>
 										{item.alias}
 									</span>
@@ -320,7 +320,7 @@
 							{#snippet accessories()}
 								{#if item.alias}
 									<span
-										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+										class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
 									>
 										{item.alias}
 									</span>
@@ -341,7 +341,7 @@
 							{#snippet accessories()}
 								{#if item.alias}
 									<span
-										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+										class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
 									>
 										{item.alias}
 									</span>
@@ -363,7 +363,7 @@
 							{#snippet accessories()}
 								{#if item.alias}
 									<span
-										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+										class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
 									>
 										{item.alias}
 									</span>

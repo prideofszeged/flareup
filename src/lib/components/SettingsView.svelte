@@ -3,6 +3,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import AiSettings from './settings/AiSettings.svelte';
 	import HotkeysSettings from './HotkeysSettings.svelte';
+	import AliasesSettings from './settings/AliasesSettings.svelte';
 	import ExtensionsSettings from './settings/ExtensionsSettings.svelte';
 	import GeneralSettings from './settings/GeneralSettings.svelte';
 	import AppearanceSettings from './settings/AppearanceSettings.svelte';
@@ -84,6 +85,7 @@
 			<Tabs.Trigger value="appearance">Appearance</Tabs.Trigger>
 			<Tabs.Trigger value="extensions">Extensions</Tabs.Trigger>
 			<Tabs.Trigger value="hotkeys">Hotkeys</Tabs.Trigger>
+			<Tabs.Trigger value="aliases">Aliases</Tabs.Trigger>
 			<Tabs.Trigger value="ai">AI</Tabs.Trigger>
 			<Tabs.Trigger value="advanced">Advanced</Tabs.Trigger>
 			<Tabs.Trigger value="about">About</Tabs.Trigger>
@@ -110,6 +112,10 @@
 
 		<Tabs.Content value="hotkeys" class="h-full">
 			<HotkeysSettings {plugins} {onBack} />
+		</Tabs.Content>
+
+		<Tabs.Content value="aliases" class="h-full overflow-y-auto">
+			<AliasesSettings />
 		</Tabs.Content>
 
 		<Tabs.Content value="ai" class="h-full">
