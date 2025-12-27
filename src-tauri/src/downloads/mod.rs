@@ -5,8 +5,16 @@ pub mod watcher;
 use manager::{DownloadsManager, MANAGER};
 use std::fs;
 use std::path::Path;
+use std::sync::MutexGuard;
 use tauri::AppHandle;
 use types::DownloadItem;
+
+/// Helper to acquire the downloads manager lock, handling poisoned mutex gracefully
+fn lock_manager() -> Result<MutexGuard<'static, Option<DownloadsManager>>, String> {
+    MANAGER
+        .lock()
+        .map_err(|_| "Downloads manager lock is poisoned".to_string())
+}
 
 /// Initialize the downloads module
 pub fn init(app_handle: AppHandle) {
@@ -40,7 +48,13 @@ pub fn init(app_handle: AppHandle) {
     }
 
     // Store the manager globally
-    *MANAGER.lock().expect("downloads manager mutex poisoned") = Some(downloads_manager);
+    match MANAGER.lock() {
+        Ok(mut guard) => *guard = Some(downloads_manager),
+        Err(e) => {
+            tracing::error!(error = %e, "Downloads manager mutex is poisoned, cannot initialize");
+            return;
+        }
+    }
 
     // Start the file watcher
     let watcher_handle = app_handle.clone();
@@ -62,11 +76,7 @@ pub fn downloads_get_items(
     limit: u32,
     offset: u32,
 ) -> Result<Vec<DownloadItem>, String> {
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         manager
             .get_items(&filter, search_term.as_deref(), limit, offset)
             .map_err(|e| e.to_string())
@@ -108,15 +118,13 @@ pub fn downloads_open_file(path: String) -> Result<(), String> {
     }
 
     // Mark as accessed
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
-        // Find the item by path and mark it accessed
-        if let Ok(items) = manager.get_items("all", None, 1000, 0) {
-            if let Some(item) = items.iter().find(|i| i.path == path.to_string_lossy()) {
-                let _ = manager.mark_accessed(item.id);
+    if let Ok(guard) = lock_manager() {
+        if let Some(manager) = guard.as_ref() {
+            // Find the item by path and mark it accessed
+            if let Ok(items) = manager.get_items("all", None, 1000, 0) {
+                if let Some(item) = items.iter().find(|i| i.path == path.to_string_lossy()) {
+                    let _ = manager.mark_accessed(item.id);
+                }
             }
         }
     }
@@ -180,11 +188,7 @@ pub fn downloads_show_in_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn downloads_delete_item(id: i64) -> Result<(), String> {
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         manager.delete_item(id).map_err(|e| e.to_string())
     } else {
         Err("Downloads manager not initialized".to_string())
@@ -204,11 +208,7 @@ pub fn downloads_delete_file(id: i64, path: String) -> Result<(), String> {
     }
 
     // Also remove from history
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         manager.delete_item(id).map_err(|e| e.to_string())?;
     }
 
@@ -217,11 +217,7 @@ pub fn downloads_delete_file(id: i64, path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn downloads_clear_history() -> Result<(), String> {
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         manager.clear_all().map_err(|e| e.to_string())
     } else {
         Err("Downloads manager not initialized".to_string())
@@ -231,11 +227,7 @@ pub fn downloads_clear_history() -> Result<(), String> {
 /// Get the most recent download
 #[tauri::command]
 pub fn downloads_get_latest() -> Result<Option<DownloadItem>, String> {
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         // Get the first item sorted by created_at descending
         manager
             .get_items("all", None, 1, 0)
@@ -249,11 +241,7 @@ pub fn downloads_get_latest() -> Result<Option<DownloadItem>, String> {
 /// Copy the latest download path to clipboard
 #[tauri::command]
 pub fn downloads_copy_latest() -> Result<String, String> {
-    if let Some(manager) = MANAGER
-        .lock()
-        .expect("downloads manager mutex poisoned")
-        .as_ref()
-    {
+    if let Some(manager) = lock_manager()?.as_ref() {
         match manager.get_items("all", None, 1, 0) {
             Ok(items) => {
                 if let Some(item) = items.first() {

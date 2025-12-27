@@ -297,6 +297,13 @@
 							{onclick}
 						>
 							{#snippet accessories()}
+								{#if item.alias}
+									<span
+										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+									>
+										{item.alias}
+									</span>
+								{/if}
 								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
 									Command
 								</span>
@@ -311,6 +318,13 @@
 							{onclick}
 						>
 							{#snippet accessories()}
+								{#if item.alias}
+									<span
+										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+									>
+										{item.alias}
+									</span>
+								{/if}
 								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
 									Application
 								</span>
@@ -325,6 +339,13 @@
 							{onclick}
 						>
 							{#snippet accessories()}
+								{#if item.alias}
+									<span
+										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+									>
+										{item.alias}
+									</span>
+								{/if}
 								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
 									Quicklink
 								</span>
@@ -340,6 +361,13 @@
 							{onclick}
 						>
 							{#snippet accessories()}
+								{#if item.alias}
+									<span
+										class="bg-primary/10 text-primary mr-2 rounded px-1.5 py-0.5 text-xs font-medium"
+									>
+										{item.alias}
+									</span>
+								{/if}
 								<span class="text-muted-foreground ml-auto text-xs whitespace-nowrap">
 									AI Command
 								</span>

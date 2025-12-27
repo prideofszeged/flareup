@@ -20,10 +20,16 @@
 
 	let { selectedItem, actions: barActions, setSearchText }: Props = $props();
 
-	function handleAddAlias() {
+	async function handleAddAlias() {
 		const alias = prompt('Enter alias for this command:');
 		if (alias) {
-			barActions.handleSetAlias(alias);
+			console.log('[ActionBar] Setting alias:', alias, 'for item:', selectedItem);
+			try {
+				await barActions.handleSetAlias(alias);
+				console.log('[ActionBar] Alias set successfully');
+			} catch (error) {
+				console.error('[ActionBar] Failed to set alias:', error);
+			}
 		}
 	}
 

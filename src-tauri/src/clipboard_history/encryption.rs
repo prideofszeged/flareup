@@ -10,7 +10,11 @@ fn get_encryption_key_impl(entry: &keyring::Entry) -> Result<[u8; 32], AppError>
         Ok(hex_key) => {
             let key_bytes =
                 hex::decode(hex_key).map_err(|e| AppError::ClipboardHistory(e.to_string()))?;
-            Ok(key_bytes.try_into().unwrap())
+            key_bytes.try_into().map_err(|_| {
+                AppError::ClipboardHistory(
+                    "Invalid encryption key length in keyring (expected 32 bytes)".into(),
+                )
+            })
         }
         Err(keyring::Error::NoEntry) => {
             let new_key: [u8; 32] = rand::random();
