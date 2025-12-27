@@ -297,7 +297,7 @@
 					<div class="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
 						<p class="font-medium text-amber-200">Potential compatibility issues detected</p>
 						<ul class="text-foreground mt-2 space-y-1 text-xs">
-							{#each selectedWarnings.slice(0, 4) as warning (warning.commandName)}
+							{#each selectedWarnings.slice(0, 4) as warning, i (`${warning.commandName}-${i}`)}
 								<li>
 									<strong>{warning.commandTitle ?? warning.commandName}:</strong>
 									<span class="text-muted-foreground ml-1">{warning.reason}</span>
@@ -314,7 +314,7 @@
 
 				{#if preferencesToShow.length > 0}
 					<div class="max-w-md space-y-6">
-						{#each preferencesToShow as pref (pref.name)}
+						{#each preferencesToShow as pref, i (`${pref.name}-${i}`)}
 							{#if pref.type === 'checkbox'}
 								<div class="space-y-2">
 									{#if pref.title}

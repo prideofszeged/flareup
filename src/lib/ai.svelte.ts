@@ -17,7 +17,7 @@ class AiStore {
 
 	async loadPresets() {
 		try {
-			this.presets = await invoke('get_ai_presets');
+			this.presets = await invoke('list_ai_presets');
 		} catch (error) {
 			console.error('Failed to load AI presets:', error);
 		}
