@@ -184,7 +184,7 @@
 
 		if (confirmed) {
 			try {
-				await invoke('uninstall_extension', { slug: selectedItem.data.pluginName });
+				await invoke('uninstall_extension', { slug: selectedItem.data.pluginSlug });
 				selectedIndex = 0;
 				onRefreshPlugins?.();
 			} catch (error) {

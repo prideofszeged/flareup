@@ -567,6 +567,8 @@ pub struct PluginInfo {
     pub description: Option<String>,
     pub plugin_title: String,
     pub plugin_name: String,
+    /// The directory name (slug) used for installation/uninstallation
+    pub plugin_slug: String,
     pub command_name: String,
     pub plugin_path: String,
     pub icon: Option<String>,
@@ -670,6 +672,7 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                             .name
                             .clone()
                             .unwrap_or_else(|| plugin_dir_name.clone()),
+                        plugin_slug: plugin_dir_name.clone(),
                         command_name: command.name.clone(),
                         plugin_path: command_file_path.to_string_lossy().to_string(),
                         icon: command.icon.or_else(|| package_json.icon.clone()),
@@ -697,6 +700,11 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         }
     }
 
+    tracing::info!(
+        count = plugins.len(),
+        plugins = ?plugins.iter().map(|p| &p.plugin_name).collect::<Vec<_>>(),
+        "Discovered plugins"
+    );
     Ok(plugins)
 }
 

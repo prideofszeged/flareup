@@ -13,6 +13,8 @@ export const PluginInfoSchema = z.object({
 	description: z.string().optional(),
 	pluginTitle: z.string(),
 	pluginName: z.string(),
+	/** The directory name (slug) used for installation/uninstallation */
+	pluginSlug: z.string(),
 	commandName: z.string(),
 	pluginPath: z.string(),
 	icon: z.string().optional(),

@@ -19,10 +19,11 @@
 		extension: Extension;
 		isInstalling: boolean;
 		onInstall: () => void;
+		onRefresh: () => void;
 		onOpenLightbox: (imageUrl: string) => void;
 	};
 
-	let { extension, isInstalling, onInstall, onOpenLightbox }: Props = $props();
+	let { extension, isInstalling, onInstall, onRefresh, onOpenLightbox }: Props = $props();
 
 	let openCommandsPopover = $state(false);
 	let isUninstalling = $state(false);
@@ -64,26 +65,41 @@
 		return `${Math.floor(seconds)} second${seconds !== 1 ? 's' : ''} ago`;
 	}
 
+	// Check if a plugin matches the extension using multiple criteria
+	const matchesExtension = (plugin: (typeof uiStore.pluginList)[0]) => {
+		// Match by pluginSlug (directory name) - most reliable
+		if (plugin.pluginSlug === extension.name) return true;
+		// Match by exact name
+		if (plugin.pluginName === extension.name) return true;
+		// Match by pluginPath containing the extension name as directory
+		if (plugin.pluginPath?.includes(`/plugins/${extension.name}/`)) return true;
+		// Match by pluginTitle (case-insensitive)
+		if (plugin.pluginTitle?.toLowerCase() === extension.title.toLowerCase()) return true;
+		return false;
+	};
+
 	const isInstalled = $derived.by(() => {
-		const installed = uiStore.pluginList.some((p) => p.pluginName === extension.name);
+		const installed = uiStore.pluginList.some(matchesExtension);
 		// Debug logging for install detection
 		console.log('[ExtensionDetail] Checking install status:', {
 			extensionName: extension.name,
 			extensionTitle: extension.title,
 			isInstalled: installed,
+			pluginListCount: uiStore.pluginList.length,
+			allPluginNames: uiStore.pluginList.map((p) => p.pluginName),
 			matchingPlugins: uiStore.pluginList
-				.filter(
-					(p) =>
-						p.pluginName === extension.name ||
-						p.pluginTitle?.toLowerCase().includes(extension.title.toLowerCase())
-				)
-				.map((p) => ({ pluginName: p.pluginName, pluginTitle: p.pluginTitle }))
+				.filter(matchesExtension)
+				.map((p) => ({
+					pluginName: p.pluginName,
+					pluginTitle: p.pluginTitle,
+					pluginPath: p.pluginPath
+				}))
 		});
 		return installed;
 	});
 
 	const installedCommandsInfo = $derived(
-		isInstalled ? uiStore.pluginList.filter((p) => p.pluginName === extension.name) : []
+		isInstalled ? uiStore.pluginList.filter(matchesExtension) : []
 	);
 
 	const compatibilityInfo = $derived.by(() => {
@@ -138,7 +154,7 @@
 
 	async function handleUninstall() {
 		if (isUninstalling) return;
-		// Use the pluginName from the installed plugin info, not extension.name from the store API
+		// Use the pluginSlug (directory name) for uninstallation
 		const installedPlugin = installedCommandsInfo[0];
 		if (!installedPlugin) {
 			console.error('No installed plugin info found');
@@ -146,8 +162,8 @@
 		}
 		isUninstalling = true;
 		try {
-			await invoke('uninstall_extension', { slug: installedPlugin.pluginName });
-			onInstall(); // Refresh plugin list
+			await invoke('uninstall_extension', { slug: installedPlugin.pluginSlug });
+			onRefresh(); // Refresh plugin list
 		} catch (e) {
 			console.error('Uninstall failed', e);
 		} finally {

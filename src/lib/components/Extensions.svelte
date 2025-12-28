@@ -88,7 +88,12 @@
 		const addedIds = new Set<string>();
 
 		const isExtensionInstalled = (ext: Extension) => {
-			return uiStore.pluginList.some((p) => p.pluginName === ext.name);
+			return uiStore.pluginList.some(
+				(p) =>
+					p.pluginSlug === ext.name ||
+					p.pluginName === ext.name ||
+					p.pluginPath?.includes(`/plugins/${ext.name}/`)
+			);
 		};
 
 		const addItems = (exts: Extension[]) => {
@@ -371,6 +376,7 @@
 				extension={extensionToShow}
 				{isInstalling}
 				onInstall={handleInstall}
+				onRefresh={onInstall}
 				onOpenLightbox={(imageUrl) => (expandedImageUrl = imageUrl)}
 			/>
 		{:else}
