@@ -10,6 +10,7 @@ mod cache;
 mod cli_substitutes;
 mod clipboard;
 pub mod clipboard_history;
+mod debug_api;
 mod desktop;
 pub mod dmenu;
 mod downloads;
@@ -571,12 +572,19 @@ async fn github_get_repo(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize tracing subscriber for structured logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
+    // Initialize tracing subscriber for structured logging with log capture layer
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer().with_filter(
+                tracing_subscriber::EnvFilter::from_default_env()
+                    .add_directive(tracing::Level::INFO.into()),
+            ),
         )
+        .with(debug_api::LogCaptureLayer)
         .init();
 
     let app = tauri::Builder::default()
@@ -773,7 +781,10 @@ pub fn run() {
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(browser_extension::run_server(app_handle));
+            tauri::async_runtime::spawn(browser_extension::run_server(app_handle.clone()));
+
+            // Spawn debug API server for development and MCP integration
+            tauri::async_runtime::spawn(debug_api::run_server(app_handle));
 
             clipboard_history::init(app.handle().clone());
             file_search::init(app.handle().clone());
@@ -975,12 +986,19 @@ fn dmenu_cancel() {
 
 /// Entry point for dmenu mode - runs a minimal Tauri app for menu selection
 pub fn run_dmenu(session: DmenuSession) {
-    // Initialize tracing subscriber for structured logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
+    // Initialize tracing subscriber for structured logging with log capture layer
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer().with_filter(
+                tracing_subscriber::EnvFilter::from_default_env()
+                    .add_directive(tracing::Level::INFO.into()),
+            ),
         )
+        .with(debug_api::LogCaptureLayer)
         .init();
 
     // Store the session in global state

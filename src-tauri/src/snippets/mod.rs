@@ -8,7 +8,7 @@ use crate::error::AppError;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
-use types::Snippet;
+pub use types::Snippet;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

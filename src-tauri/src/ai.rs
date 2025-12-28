@@ -287,9 +287,9 @@ fn write_settings(path: &Path, settings: &AiSettings) -> Result<(), String> {
     fs::write(path, content).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn get_ai_settings(app: tauri::AppHandle) -> Result<AiSettings, String> {
-    let path = get_settings_path(&app)?;
+/// Internal version (non-Tauri command) for use by debug API
+pub fn get_ai_settings_internal(app: &tauri::AppHandle) -> Result<AiSettings, String> {
+    let path = get_settings_path(app)?;
     let mut user_settings = read_settings(&path)?;
 
     for (key, &default_value) in DEFAULT_AI_MODELS.iter() {
@@ -304,6 +304,11 @@ pub fn get_ai_settings(app: tauri::AppHandle) -> Result<AiSettings, String> {
     }
 
     Ok(user_settings)
+}
+
+#[tauri::command]
+pub fn get_ai_settings(app: tauri::AppHandle) -> Result<AiSettings, String> {
+    get_ai_settings_internal(&app)
 }
 
 #[tauri::command]

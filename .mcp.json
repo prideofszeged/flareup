@@ -2,7 +2,18 @@
 	"mcpServers": {
 		"ChunkHound": {
 			"command": "chunkhound",
-			"args": ["mcp"],
+			"args": [
+				"mcp"
+			],
+			"env": {}
+		},
+		"flareup": {
+			"command": "npx",
+			"args": [
+				"tsx",
+				"packages/mcp-server/src/index.ts"
+			],
+			"cwd": "/home/steven/scratch/flareup",
 			"env": {}
 		}
 	}

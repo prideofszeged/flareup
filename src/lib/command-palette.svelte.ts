@@ -1,5 +1,6 @@
 import type { PluginInfo } from '@flare/protocol';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import Fuse from 'fuse.js';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { Quicklink } from '$lib/quicklinks.svelte';
@@ -345,6 +346,8 @@ export function useCommandPaletteActions({
 			case 'app': {
 				if (item.data.exec) {
 					invoke('launch_app', { exec: item.data.exec }).catch(console.error);
+					// Hide window after launching app so the launched app can receive focus
+					await getCurrentWindow().hide();
 				}
 				break;
 			}
