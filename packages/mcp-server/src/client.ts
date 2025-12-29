@@ -147,6 +147,10 @@ export class FlareupClient {
         return this.fetch<Record<string, unknown>>('/ai/settings');
     }
 
+    async getJumpMode(): Promise<ApiResponse<JumpModeData>> {
+        return this.fetch<JumpModeData>('/jump-mode');
+    }
+
     async getLogs(options?: { limit?: number; level?: string; search?: string }): Promise<ApiResponse<LogEntry[]>> {
         const params = new URLSearchParams();
         if (options?.limit) params.set('limit', options.limit.toString());
@@ -211,6 +215,14 @@ export class FlareupClient {
             };
         }
     }
+}
+
+export interface JumpModeData {
+    enabled: boolean;
+    fd_available: boolean;
+    editor_command: string;
+    max_results: number;
+    search_hidden: boolean;
 }
 
 // Singleton instance

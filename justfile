@@ -357,6 +357,74 @@ test:
     pnpm test
 
 # ============================================================================
+# MCP Development (Meta AF)
+# ============================================================================
+
+# Test MCP server health and all endpoints
+[group('mcp')]
+mcp-health:
+    #!/usr/bin/env bash
+    set -e
+    echo "🔍 Testing Flareup MCP server..."
+    ./test-mcp-server.sh
+
+# Scaffold a new MCP-enabled feature
+[group('mcp')]
+mcp-new-feature FEATURE_NAME:
+    #!/usr/bin/env bash
+    set -e
+    ./scripts/new-mcp-feature.sh {{FEATURE_NAME}}
+
+# Start MCP server for testing
+[group('mcp')]
+mcp-start:
+    #!/usr/bin/env bash
+    set -e
+    echo "🚀 Starting Flareup MCP server..."
+    cd packages/mcp-server && pnpm dev
+
+# Check if debug API is running
+[group('mcp')]
+mcp-check-api:
+    #!/usr/bin/env bash
+    echo "Checking Flareup debug API..."
+    curl -s http://127.0.0.1:7266/health | jq .
+
+# Query specific debug endpoint
+[group('mcp')]
+mcp-query ENDPOINT:
+    #!/usr/bin/env bash
+    curl -s http://127.0.0.1:7266{{ENDPOINT}} | jq .
+
+# Tail recent logs via MCP
+[group('mcp')]
+mcp-logs LIMIT="10":
+    #!/usr/bin/env bash
+    curl -s "http://127.0.0.1:7266/logs?limit={{LIMIT}}" | jq -r '.data[] | "[\\(.timestamp)] \\(.level | ascii_upcase) \\(.target): \\(.message)"'
+
+# Set log level via MCP
+[group('mcp')]
+mcp-set-log-level LEVEL:
+    #!/usr/bin/env bash
+    curl -s -X POST http://127.0.0.1:7266/logs/config \
+        -H "Content-Type: application/json" \
+        -d '{"level":"{{LEVEL}}"}' | jq .
+
+# Show MCP development workflow
+[group('mcp')]
+mcp-workflow:
+    @echo "📚 MCP Development Workflow"
+    @echo "==========================="
+    @echo ""
+    @echo "See: .agent/workflows/mcp-driven-development.md"
+    @echo ""
+    @echo "Quick commands:"
+    @echo "  just mcp-new-feature <name>  - Scaffold new MCP-enabled feature"
+    @echo "  just mcp-health              - Test all MCP endpoints"
+    @echo "  just mcp-logs                - View recent logs"
+    @echo "  just mcp-check-api           - Check if API is running"
+
+# ============================================================================
 # Utilities
 # ============================================================================
 

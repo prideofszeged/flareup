@@ -85,11 +85,6 @@ fi
 echo ""
 
 # Summary
-echo "Testing JumpMode"
-echo "-------------"
-test_endpoint "JumpMode" "/jump-mode" "jump_mode data"
-echo ""
-
 echo "Summary:"
 echo "--------"
 echo "• Debug API running on: $BASE_URL"

@@ -23,6 +23,7 @@ mod floating_notes;
 mod frecency;
 mod hotkey_manager;
 mod integrations;
+mod jump_mode;
 mod oauth;
 mod quick_toggles;
 mod quicklinks;
@@ -570,7 +571,30 @@ async fn github_get_repo(
     client.get_repo(&owner, &repo).await
 }
 
+// Jump Mode commands
+#[tauri::command]
+fn jump_mode_search(query: String) -> Result<Vec<String>, String> {
+    let config = jump_mode::JumpModeConfig::default();
+    jump_mode::execute_fd_search(&query, &config, None)
+}
+
+#[tauri::command]
+fn jump_mode_open(path: String) -> Result<(), String> {
+    jump_mode::open_in_editor(&path)
+}
+
+#[tauri::command]
+fn jump_mode_config() -> jump_mode::JumpModeConfig {
+    jump_mode::JumpModeConfig::default()
+}
+
+#[tauri::command]
+fn jump_mode_is_available() -> bool {
+    jump_mode::is_fd_available()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+
 pub fn run() {
     // Initialize tracing subscriber for structured logging with log capture layer
     use tracing_subscriber::layer::SubscriberExt;
@@ -774,6 +798,11 @@ pub fn run() {
             ai_presets::get_ai_preset,
             ai_presets::update_ai_preset,
             ai_presets::delete_ai_preset,
+            // Jump Mode
+            jump_mode_search,
+            jump_mode_open,
+            jump_mode_config,
+            jump_mode_is_available,
             // AI Tools
             ai_tools::get_ai_tool_definitions,
             ai_tools::check_model_supports_tools,

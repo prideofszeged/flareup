@@ -31,6 +31,7 @@
 	import DmenuView from '$lib/components/DmenuView.svelte';
 	import DownloadsView from '$lib/components/DownloadsView.svelte';
 	import QuickAiView from '$lib/components/QuickAiView.svelte';
+	import JumpMode from '$lib/components/JumpMode.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -124,6 +125,20 @@
 		pluginSlug: 'file-search',
 		commandName: 'search-files',
 		pluginPath: 'builtin:file-search',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	const jumpModePlugin: PluginInfo = {
+		title: 'Jump to File',
+		description: 'Fuzzy search and open any file (requires fd)',
+		pluginTitle: 'Flare',
+		pluginName: 'file-search',
+		pluginSlug: 'file-search',
+		commandName: 'jump-to-file',
+		pluginPath: 'builtin:jump-mode',
 		icon: fileSearchCommandIcon,
 		preferences: [],
 		mode: 'view',
@@ -478,6 +493,7 @@
 		createSnippetPlugin,
 		importSnippetsPlugin,
 		fileSearchPlugin,
+		jumpModePlugin,
 		aiChatPlugin,
 		downloadsPlugin,
 		openLatestDownloadPlugin,
@@ -701,6 +717,8 @@
 	<ImportSnippets onBack={viewManager.showCommandPalette} snippetsToImport={snippetsForImport} />
 {:else if currentView === 'file-search'}
 	<FileSearchView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'jump-mode'}
+	<JumpMode />
 {:else if currentView === 'ai-chat'}
 	<AiChatView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'downloads'}

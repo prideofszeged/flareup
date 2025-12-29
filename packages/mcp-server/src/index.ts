@@ -154,6 +154,15 @@ const TOOLS: Tool[] = [
             required: ['level'],
         },
     },
+    {
+        name: 'flareup_get_jump_mode',
+        description: 'Get jump mode configuration and status. Shows if fd (file finder) is available, configured editor, search settings, and whether the feature is enabled.',
+        inputSchema: {
+            type: 'object',
+            properties: {},
+            required: [],
+        },
+    },
 ];
 
 // Tool execution handlers
@@ -303,6 +312,19 @@ async function executeTool(name: string, _args: Record<string, unknown>): Promis
                 return `Log capture level set to: ${result.data.level}`;
             }
             return `Error setting log level: ${result.error}`;
+        }
+
+        case 'flareup_get_jump_mode': {
+            const result = await flareupClient.getJumpMode();
+            if (result.success && result.data) {
+                return `Jump Mode Status:
+- Enabled: ${result.data.enabled}
+- fd Available: ${result.data.fd_available}
+- Editor: ${result.data.editor_command}
+- Max Results: ${result.data.max_results}
+- Search Hidden Files: ${result.data.search_hidden}`;
+            }
+            return `Error getting jump_mode: ${result.error}`;
         }
 
         default:

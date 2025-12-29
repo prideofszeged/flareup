@@ -31,7 +31,8 @@ export type ViewState =
 	| 'file-search'
 	| 'ai-chat'
 	| 'downloads'
-	| 'quick-ai';
+	| 'quick-ai'
+	| 'jump-mode';
 
 type OauthState = {
 	url: string;
@@ -104,6 +105,10 @@ class ViewManager {
 		this.currentView = 'file-search';
 	};
 
+	showJumpMode = () => {
+		this.currentView = 'jump-mode';
+	};
+
 	initialAiPrompt: string | null = null;
 	showAiChat = (initialPrompt?: string) => {
 		this.initialAiPrompt = initialPrompt ?? null;
@@ -148,6 +153,9 @@ class ViewManager {
 				return;
 			case 'builtin:file-search':
 				this.showFileSearch();
+				return;
+			case 'builtin:jump-mode':
+				this.showJumpMode();
 				return;
 			case 'builtin:ai-chat':
 				this.showAiChat();

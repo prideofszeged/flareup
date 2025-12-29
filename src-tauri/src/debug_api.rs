@@ -51,7 +51,12 @@ impl LogBuffer {
         entries.push_back(entry);
     }
 
-    pub fn get_entries(&self, limit: Option<usize>, level: Option<&str>, search: Option<&str>) -> Vec<LogEntry> {
+    pub fn get_entries(
+        &self,
+        limit: Option<usize>,
+        level: Option<&str>,
+        search: Option<&str>,
+    ) -> Vec<LogEntry> {
         let entries = self.entries.read().unwrap();
         let mut result: Vec<LogEntry> = entries
             .iter()
@@ -175,7 +180,8 @@ impl tracing::field::Visit for FieldVisitor {
         if field.name() == "message" {
             self.message = format!("{:?}", value);
         } else {
-            self.fields.insert(field.name().to_string(), format!("{:?}", value));
+            self.fields
+                .insert(field.name().to_string(), format!("{:?}", value));
         }
     }
 
@@ -183,7 +189,8 @@ impl tracing::field::Visit for FieldVisitor {
         if field.name() == "message" {
             self.message = value.to_string();
         } else {
-            self.fields.insert(field.name().to_string(), value.to_string());
+            self.fields
+                .insert(field.name().to_string(), value.to_string());
         }
     }
 }
@@ -387,7 +394,9 @@ struct SetLogConfigRequest {
 }
 
 /// POST /logs/config - Set log capture level
-async fn set_log_config(Json(body): Json<SetLogConfigRequest>) -> Json<ApiResponse<LogConfigResponse>> {
+async fn set_log_config(
+    Json(body): Json<SetLogConfigRequest>,
+) -> Json<ApiResponse<LogConfigResponse>> {
     match parse_log_level(&body.level) {
         Some(level) => {
             set_log_capture_level(level);
@@ -401,6 +410,31 @@ async fn set_log_config(Json(body): Json<SetLogConfigRequest>) -> Json<ApiRespon
             body.level
         )),
     }
+}
+
+/// Jump mode data for debugging
+#[derive(Serialize)]
+struct JumpModeData {
+    enabled: bool,
+    fd_available: bool,
+    editor_command: String,
+    max_results: usize,
+    search_hidden: bool,
+}
+
+/// GET /jump-mode - Get jump mode status and configuration
+async fn get_jump_mode() -> Json<ApiResponse<JumpModeData>> {
+    let fd_available = crate::jump_mode::is_fd_available();
+    let config = crate::jump_mode::JumpModeConfig::default();
+    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "xdg-open".to_string());
+
+    ApiResponse::ok(JumpModeData {
+        enabled: config.enabled,
+        fd_available,
+        editor_command: editor,
+        max_results: config.max_results,
+        search_hidden: config.search_hidden,
+    })
 }
 
 /// Request body for executing arbitrary commands
@@ -494,6 +528,7 @@ async fn index() -> Json<Value> {
             "GET /logs/config": "Get log capture configuration",
             "POST /logs/config": "Set log capture level ({\"level\": \"info\"})",
             "GET /ai/settings": "Get AI settings",
+            "GET /jump-mode": "Get jump mode configuration and status",
             "POST /command/:name": "Execute a whitelisted command"
         }
     }))
@@ -520,6 +555,7 @@ pub fn create_router(app_handle: AppHandle) -> Router {
         .route("/aliases", get(get_aliases))
         .route("/settings", get(get_settings))
         .route("/ai/settings", get(get_ai_settings))
+        .route("/jump-mode", get(get_jump_mode))
         .route("/logs", get(get_logs).delete(clear_logs))
         .route("/logs/config", get(get_log_config).post(set_log_config))
         .route("/command/{name}", post(execute_command))
