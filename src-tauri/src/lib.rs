@@ -25,6 +25,7 @@ mod hotkey_manager;
 mod integrations;
 mod jump_mode;
 mod oauth;
+mod process_management;
 mod quick_toggles;
 mod quicklinks;
 mod script_commands;
@@ -198,6 +199,10 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
 
     // Register the shortcut handler
     tracing::info!("Registering global shortcut: Ctrl+Alt+Space");
+
+    // Try to unregister first in case it's still registered from a previous crashed session
+    let _ = app.global_shortcut().unregister(spotlight_shortcut);
+
     app.global_shortcut()
         .on_shortcut(spotlight_shortcut, move |app, shortcut, event| {
             tracing::debug!(
@@ -806,7 +811,15 @@ pub fn run() {
             // AI Tools
             ai_tools::get_ai_tool_definitions,
             ai_tools::check_model_supports_tools,
-            ai_tools::execute_ai_tool
+            ai_tools::execute_ai_tool,
+            // Process Management
+            process_management::process_list,
+            process_management::process_search,
+            process_management::process_kill,
+            process_management::port_list_open,
+            process_management::port_get_process,
+            process_management::port_kill_process,
+            process_management::list_windows
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();

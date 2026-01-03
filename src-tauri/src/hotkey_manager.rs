@@ -188,6 +188,9 @@ impl HotkeyManager {
         command_id: String,
         shortcut: Shortcut,
     ) -> Result<(), String> {
+        // Try to unregister first in case it's still registered from a previous crashed session
+        let _ = app.global_shortcut().unregister(shortcut);
+
         // Register the shortcut
         app.global_shortcut()
             .register(shortcut)
@@ -414,17 +417,17 @@ pub fn get_default_hotkeys() -> Vec<HotkeyConfig> {
             modifiers: 1 | 2,
             key: "KeyL".to_string(),
         },
-        // Built-in Features
+        // Built-in Features (using Ctrl+Super to avoid conflicts with terminals)
         HotkeyConfig {
             command_id: "builtin:history".to_string(),
-            hotkey: "Ctrl+Shift+V".to_string(),
-            modifiers: 1 | 4, // Ctrl + Shift
+            hotkey: "Ctrl+Super+V".to_string(),
+            modifiers: 1 | 8, // Ctrl + Super
             key: "KeyV".to_string(),
         },
         HotkeyConfig {
             command_id: "builtin:search-snippets".to_string(),
-            hotkey: "Ctrl+Shift+S".to_string(),
-            modifiers: 1 | 4,
+            hotkey: "Ctrl+Super+S".to_string(),
+            modifiers: 1 | 8, // Ctrl + Super
             key: "KeyS".to_string(),
         },
     ]

@@ -32,7 +32,9 @@ export type ViewState =
 	| 'ai-chat'
 	| 'downloads'
 	| 'quick-ai'
-	| 'jump-mode';
+	| 'jump-mode'
+	| 'process-manager'
+	| 'quick-kill';
 
 type OauthState = {
 	url: string;
@@ -119,6 +121,14 @@ class ViewManager {
 		this.currentView = 'downloads';
 	};
 
+	showProcessManager = () => {
+		this.currentView = 'process-manager';
+	};
+
+	showQuickKill = () => {
+		this.currentView = 'quick-kill';
+	};
+
 	showQuickAi = (prompt: string, selection: string = '') => {
 		this.quickAiPrompt = prompt;
 		this.quickAiSelection = selection;
@@ -162,6 +172,12 @@ class ViewManager {
 				return;
 			case 'builtin:downloads':
 				this.showDownloads();
+				return;
+			case 'builtin:process-manager':
+				this.showProcessManager();
+				return;
+			case 'builtin:quick-kill':
+				this.showQuickKill();
 				return;
 			case 'builtin:open-latest-download':
 				try {

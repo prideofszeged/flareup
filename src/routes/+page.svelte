@@ -32,6 +32,8 @@
 	import DownloadsView from '$lib/components/DownloadsView.svelte';
 	import QuickAiView from '$lib/components/QuickAiView.svelte';
 	import JumpMode from '$lib/components/JumpMode.svelte';
+	import ProcessManager from '$lib/components/ProcessManager.svelte';
+	import QuickKill from '$lib/components/QuickKill.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
@@ -328,6 +330,34 @@
 		owner: 'flare'
 	};
 
+	const processManagerPlugin: PluginInfo = {
+		title: 'Process Manager',
+		description: 'View, search and kill running processes. Find and kill processes on ports.',
+		pluginTitle: 'System',
+		pluginName: 'process-manager',
+		pluginSlug: 'process-manager',
+		commandName: 'process-manager',
+		pluginPath: 'builtin:process-manager',
+		icon: '',
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	const quickKillPlugin: PluginInfo = {
+		title: 'Quick Kill',
+		description: 'Force quit running applications',
+		pluginTitle: 'System',
+		pluginName: 'quick-kill',
+		pluginSlug: 'quick-kill',
+		commandName: 'quick-kill',
+		pluginPath: 'builtin:quick-kill',
+		icon: '',
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
 	// Window Management
 	const snapLeftPlugin: PluginInfo = {
 		title: 'Snap Window Left Half',
@@ -508,6 +538,8 @@
 		volumeDownPlugin,
 		toggleMutePlugin,
 		emptyTrashPlugin,
+		processManagerPlugin,
+		quickKillPlugin,
 		// Window management
 		snapLeftPlugin,
 		snapRightPlugin,
@@ -723,6 +755,10 @@
 	<AiChatView onBack={viewManager.showCommandPalette} />
 {:else if currentView === 'downloads'}
 	<DownloadsView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'process-manager'}
+	<ProcessManager />
+{:else if currentView === 'quick-kill'}
+	<QuickKill />
 {:else if currentView === 'quick-ai'}
 	<QuickAiView
 		prompt={quickAiPrompt}
