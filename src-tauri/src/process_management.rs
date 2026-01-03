@@ -136,18 +136,20 @@ async fn list_windows_wmctrl() -> Result<Vec<WindowInfo>, String> {
 
     for line in stdout.lines() {
         // Format: 0x04000007  0 12345  class.ClassName  hostname Window Title
-        let parts: Vec<&str> = line.splitn(5, |c: char| c.is_whitespace()).collect();
+        // Split by whitespace first, then reconstruct title from remaining parts
+        let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 5 {
             let window_id = parts[0].to_string();
-            // Skip the desktop number (parts[1])
-            let pid = parts[2].trim().parse::<u32>().unwrap_or(0);
-            let class_name = parts[3].trim().to_string();
-            // The rest after the 4th whitespace-separated field is the title
-            let title = line
-                .splitn(5, char::is_whitespace)
-                .nth(4)
-                .map(|s| s.trim().to_string())
-                .unwrap_or_default();
+            // parts[1] is desktop number (skip it)
+            let pid = parts[2].parse::<u32>().unwrap_or(0);
+            let class_name = parts[3].to_string();
+            // parts[4] is hostname, parts[5..] is the title
+            let title = if parts.len() > 5 {
+                parts[5..].join(" ")
+            } else {
+                // If only 5 parts, the 5th part is both hostname and title
+                parts[4].to_string()
+            };
 
             // Skip windows without PIDs or with empty titles
             if pid > 0 && !title.is_empty() {
