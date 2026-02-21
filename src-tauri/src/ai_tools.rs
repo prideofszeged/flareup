@@ -539,6 +539,8 @@ fn execute_get_system_info() -> Result<String, String> {
 }
 
 fn execute_run_command(args: &Value) -> Result<String, String> {
+    const TIMEOUT_SECS: u64 = 30;
+
     let command = args
         .get("command")
         .and_then(|v| v.as_str())
@@ -546,24 +548,55 @@ fn execute_run_command(args: &Value) -> Result<String, String> {
 
     warn!(command = %command, "AI tool executing shell command");
 
-    let output = Command::new("bash")
+    let mut child = Command::new("bash")
         .arg("-c")
         .arg(command)
-        .output()
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
         .map_err(|e| format!("Failed to execute command: {}", e))?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let timeout = std::time::Duration::from_secs(TIMEOUT_SECS);
+    let start = std::time::Instant::now();
 
-    if output.status.success() {
-        Ok(stdout.to_string())
-    } else {
-        Err(format!(
-            "Command failed with exit code {:?}\nstdout: {}\nstderr: {}",
-            output.status.code(),
-            stdout,
-            stderr
-        ))
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let stdout = child.stdout.take().map(|mut s| {
+                    let mut buf = String::new();
+                    std::io::Read::read_to_string(&mut s, &mut buf).ok();
+                    buf
+                }).unwrap_or_default();
+                let stderr = child.stderr.take().map(|mut s| {
+                    let mut buf = String::new();
+                    std::io::Read::read_to_string(&mut s, &mut buf).ok();
+                    buf
+                }).unwrap_or_default();
+
+                if status.success() {
+                    return Ok(stdout);
+                } else {
+                    return Err(format!(
+                        "Command failed with exit code {:?}\nstdout: {}\nstderr: {}",
+                        status.code(),
+                        stdout,
+                        stderr
+                    ));
+                }
+            }
+            Ok(None) => {
+                if start.elapsed() > timeout {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(format!(
+                        "Command timed out after {}s and was killed",
+                        TIMEOUT_SECS
+                    ));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(e) => return Err(format!("Failed to wait for command: {}", e)),
+        }
     }
 }
 

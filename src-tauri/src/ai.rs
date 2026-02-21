@@ -1144,6 +1144,21 @@ pub async fn ai_ask_stream(
             let arguments: serde_json::Value =
                 serde_json::from_str(arguments_str).unwrap_or(serde_json::json!({}));
 
+            // Skip tool calls with missing id or name (malformed stream delta)
+            if tool_call_id.is_empty() || tool_name.is_empty() {
+                tracing::warn!(
+                    tool_call_id = %tool_call_id,
+                    tool_name = %tool_name,
+                    "Skipping tool call with empty id or name"
+                );
+                messages.push(serde_json::json!({
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": "Error: malformed tool call (empty id or name)"
+                }));
+                continue;
+            }
+
             // Get tool safety
             let tool = crate::ai_tools::BuiltinTool::from_name(tool_name);
             let safety = tool

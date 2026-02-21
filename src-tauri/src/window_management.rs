@@ -243,6 +243,12 @@ fn move_resize_window(
 /// Snap the active window to a position
 #[tauri::command]
 pub async fn snap_active_window(position: SnapPosition) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || snap_active_window_sync(position))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+}
+
+fn snap_active_window_sync(position: SnapPosition) -> Result<(), String> {
     tracing::info!("Snapping window to: {:?}", position);
 
     let window = get_active_window()?;
@@ -316,28 +322,34 @@ pub async fn snap_active_window(position: SnapPosition) -> Result<(), String> {
 /// Get available monitors
 #[tauri::command]
 pub async fn get_available_monitors() -> Result<Vec<Monitor>, String> {
-    get_monitors()
+    tokio::task::spawn_blocking(get_monitors)
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// Move active window to a specific monitor
 #[tauri::command]
 pub async fn move_window_to_monitor(monitor_index: usize) -> Result<(), String> {
-    tracing::info!("Moving window to monitor index: {}", monitor_index);
+    tokio::task::spawn_blocking(move || {
+        tracing::info!("Moving window to monitor index: {}", monitor_index);
 
-    let window = get_active_window()?;
-    let current_geom = get_window_geometry(window)?;
-    let monitors = get_monitors()?;
+        let window = get_active_window()?;
+        let current_geom = get_window_geometry(window)?;
+        let monitors = get_monitors()?;
 
-    if monitor_index >= monitors.len() {
-        return Err(format!("Monitor index {} out of range", monitor_index));
-    }
+        if monitor_index >= monitors.len() {
+            return Err(format!("Monitor index {} out of range", monitor_index));
+        }
 
-    let target_monitor = &monitors[monitor_index];
+        let target_monitor = &monitors[monitor_index];
 
-    // Center window on target monitor, keeping current size (saturating to avoid underflow)
-    let x = target_monitor.x + (target_monitor.width.saturating_sub(current_geom.width) / 2) as i32;
-    let y = target_monitor.y + (target_monitor.height.saturating_sub(current_geom.height) / 2) as i32;
+        // Center window on target monitor, keeping current size (saturating to avoid underflow)
+        let x = target_monitor.x + (target_monitor.width.saturating_sub(current_geom.width) / 2) as i32;
+        let y = target_monitor.y + (target_monitor.height.saturating_sub(current_geom.height) / 2) as i32;
 
-    move_resize_window(window, x, y, current_geom.width, current_geom.height)?;
-    Ok(())
+        move_resize_window(window, x, y, current_geom.width, current_geom.height)?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }

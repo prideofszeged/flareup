@@ -71,6 +71,7 @@
 	let messages = $state<Message[]>([]);
 	let prompt = $state('');
 	let isGenerating = $state(false);
+	let activeRequestId = $state<string | null>(null);
 	let showSidebar = $state(true);
 	let searchInputEl: HTMLInputElement | null = $state(null);
 	let scrollContainer: HTMLElement | null = $state(null);
@@ -119,6 +120,7 @@
 
 		// Add placeholder for assistant message
 		const assistantMessageId = Date.now().toString();
+		activeRequestId = assistantMessageId;
 		messages = [...messages, { role: 'assistant', content: '' }];
 		const assistantMessageIndex = messages.length - 1;
 
@@ -169,6 +171,7 @@
 	}
 
 	function newChat() {
+		activeRequestId = null;
 		isGenerating = false;
 		messages = [];
 		currentConversationId = null;
@@ -236,8 +239,8 @@
 		const unlistenChunk = listen<{ request_id: string; text: string }>(
 			'ai-stream-chunk',
 			(event) => {
-				const { text } = event.payload;
-				if (messages.length === 0) return;
+				const { request_id, text } = event.payload;
+				if (request_id !== activeRequestId || messages.length === 0) return;
 				messages[messages.length - 1].content += text;
 				tick().then(() => {
 					if (scrollContainer) {
@@ -249,7 +252,8 @@
 
 		const unlistenEnd = listen<{ request_id: string; full_text: string }>(
 			'ai-stream-end',
-			async () => {
+			async (event) => {
+				if (event.payload.request_id !== activeRequestId) return;
 				isGenerating = false;
 				// Auto-save after response completes
 				if (messages.length > 0) {
