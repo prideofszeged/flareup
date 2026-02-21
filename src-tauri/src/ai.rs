@@ -825,7 +825,7 @@ pub async fn ai_ask_stream(
 
     // If a specific model ID was provided (not just "default"), use it directly
     // Otherwise, look up from model associations or fall back to default
-    let model_id = if model_key != "default" && model_key.contains('/') || model_key.contains(':') {
+    let model_id = if model_key != "default" && (model_key.contains('/') || model_key.contains(':')) {
         // Looks like a specific model ID (e.g., "openai/gpt-4o" or "llama3:latest")
         model_key.clone()
     } else {
@@ -916,7 +916,10 @@ pub async fn ai_ask_stream(
         }
     };
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
 
     // Tool calling loop - may need multiple rounds
     let max_tool_rounds = 10;
@@ -1172,7 +1175,14 @@ pub async fn ai_ask_stream(
                     && safety == crate::ai_tools::ToolSafety::Safe);
 
             let tool_result = if should_execute {
-                crate::ai_tools::execute_tool(tool_name, &arguments, &settings.allowed_directories)
+                let tn = tool_name.to_string();
+                let args = arguments.clone();
+                let dirs = settings.allowed_directories.clone();
+                tokio::task::spawn_blocking(move || {
+                    crate::ai_tools::execute_tool(&tn, &args, &dirs)
+                })
+                .await
+                .map_err(|e| e.to_string())?
             } else {
                 Err(format!(
                     "Tool '{}' requires user confirmation (not yet implemented)",

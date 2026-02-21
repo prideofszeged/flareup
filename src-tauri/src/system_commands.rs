@@ -315,14 +315,14 @@ pub async fn empty_trash() -> Result<usize, String> {
     }
 
     let mut count = 0;
-    for entry in std::fs::read_dir(&trash_path).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
+    let mut entries = tokio::fs::read_dir(&trash_path).await.map_err(|e| e.to_string())?;
+    while let Some(entry) = entries.next_entry().await.map_err(|e| e.to_string())? {
         let path = entry.path();
 
         if path.is_dir() {
-            std::fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+            tokio::fs::remove_dir_all(&path).await.map_err(|e| e.to_string())?;
         } else {
-            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+            tokio::fs::remove_file(&path).await.map_err(|e| e.to_string())?;
         }
         count += 1;
     }

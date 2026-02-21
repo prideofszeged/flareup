@@ -767,6 +767,9 @@ pub fn get_extension_compatibility(
     app: tauri::AppHandle,
     slug: String,
 ) -> Result<CompatibilityInfo, String> {
+    if slug.is_empty() || slug.contains("..") || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid extension slug".to_string());
+    }
     let extension_dir = get_extension_dir(&app, &slug)?;
     let metadata = load_compatibility_metadata(&extension_dir)?;
 
@@ -816,7 +819,7 @@ pub fn get_all_extensions_compatibility(
 #[tauri::command]
 pub fn uninstall_extension(app: tauri::AppHandle, slug: String) -> Result<(), String> {
     // Reject slugs with path traversal components
-    if slug.contains("..") || slug.contains('/') || slug.contains('\\') {
+    if slug.is_empty() || slug.contains("..") || slug.contains('/') || slug.contains('\\') {
         return Err("Invalid extension slug".to_string());
     }
 

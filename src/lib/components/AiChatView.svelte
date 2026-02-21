@@ -169,6 +169,7 @@
 	}
 
 	function newChat() {
+		isGenerating = false;
 		messages = [];
 		currentConversationId = null;
 		selectedPreset = null;
@@ -236,6 +237,7 @@
 			'ai-stream-chunk',
 			(event) => {
 				const { text } = event.payload;
+				if (messages.length === 0) return;
 				messages[messages.length - 1].content += text;
 				tick().then(() => {
 					if (scrollContainer) {

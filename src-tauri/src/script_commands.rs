@@ -125,7 +125,7 @@ impl ScriptCommandManager {
             }
         }
 
-        let mut store = scripts_store.lock().unwrap();
+        let mut store = scripts_store.lock().unwrap_or_else(|e| e.into_inner());
         *store = new_scripts;
     }
 
@@ -217,7 +217,7 @@ impl ScriptCommandManager {
     }
 
     pub fn get_scripts(&self) -> Vec<ScriptCommand> {
-        let store = self.scripts.lock().unwrap();
+        let store = self.scripts.lock().unwrap_or_else(|e| e.into_inner());
         store.values().cloned().collect()
     }
 }
@@ -234,14 +234,15 @@ pub fn run_script_command(app: AppHandle, command_path: String, args: Vec<String
         .path()
         .app_local_data_dir()
         .map_err(|_| "Failed to get data dir".to_string())?;
-    let scripts_dir = data_dir.join("scripts");
+    let scripts_dir = std::fs::canonicalize(data_dir.join("scripts"))
+        .map_err(|e| format!("Failed to resolve scripts directory: {}", e))?;
     let resolved = std::fs::canonicalize(&command_path)
         .map_err(|e| format!("Failed to resolve script path: {}", e))?;
     if !resolved.starts_with(&scripts_dir) {
         return Err("Script path is outside the scripts directory".to_string());
     }
 
-    let output = Command::new(&command_path)
+    let output = Command::new(&resolved)
         .args(args)
         .output()
         .map_err(|e| format!("Failed to execute script: {}", e))?;

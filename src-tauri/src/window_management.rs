@@ -146,10 +146,11 @@ pub fn get_monitors() -> Result<Vec<Monitor>, String> {
             let is_primary = parts.contains(&"primary");
 
             // Find geometry string (format: "1920x1080+1920+0")
-            let geom_str = parts
-                .iter()
-                .find(|s| s.contains('x') && s.contains('+'))
-                .ok_or("Invalid monitor geometry")?;
+            // Skip inactive monitors that have no geometry token
+            let geom_str = match parts.iter().find(|s| s.contains('x') && s.contains('+')) {
+                Some(g) => g,
+                None => continue, // Inactive monitor, skip
+            };
 
             // Parse geometry: "1920x1080+1920+0"
             let (size, pos) = geom_str.split_once('+').ok_or("Invalid geometry format")?;
