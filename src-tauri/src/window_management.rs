@@ -333,9 +333,9 @@ pub async fn move_window_to_monitor(monitor_index: usize) -> Result<(), String> 
 
     let target_monitor = &monitors[monitor_index];
 
-    // Center window on target monitor, keeping current size
-    let x = target_monitor.x + ((target_monitor.width - current_geom.width) / 2) as i32;
-    let y = target_monitor.y + ((target_monitor.height - current_geom.height) / 2) as i32;
+    // Center window on target monitor, keeping current size (saturating to avoid underflow)
+    let x = target_monitor.x + (target_monitor.width.saturating_sub(current_geom.width) / 2) as i32;
+    let y = target_monitor.y + (target_monitor.height.saturating_sub(current_geom.height) / 2) as i32;
 
     move_resize_window(window, x, y, current_geom.width, current_geom.height)?;
     Ok(())

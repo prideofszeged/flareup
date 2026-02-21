@@ -68,8 +68,14 @@ pub async fn download_substitute(
     let arch = get_arch_string();
     let url = substitute.download_url_template.replace("{arch}", arch);
 
-    // Download the archive
-    let response = reqwest::get(&url)
+    // Download the archive (30-second timeout)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+    let response = client
+        .get(&url)
+        .send()
         .await
         .map_err(|e| format!("Failed to download CLI substitute from {}: {}", url, e))?;
 

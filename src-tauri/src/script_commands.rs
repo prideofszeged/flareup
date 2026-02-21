@@ -228,7 +228,19 @@ pub fn get_script_commands(manager: State<ScriptCommandManager>) -> Vec<ScriptCo
 }
 
 #[tauri::command]
-pub fn run_script_command(command_path: String, args: Vec<String>) -> Result<String, String> {
+pub fn run_script_command(app: AppHandle, command_path: String, args: Vec<String>) -> Result<String, String> {
+    // Validate that the command path is inside the scripts directory
+    let data_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "Failed to get data dir".to_string())?;
+    let scripts_dir = data_dir.join("scripts");
+    let resolved = std::fs::canonicalize(&command_path)
+        .map_err(|e| format!("Failed to resolve script path: {}", e))?;
+    if !resolved.starts_with(&scripts_dir) {
+        return Err("Script path is outside the scripts directory".to_string());
+    }
+
     let output = Command::new(&command_path)
         .args(args)
         .output()

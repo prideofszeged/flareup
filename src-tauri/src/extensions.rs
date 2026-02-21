@@ -815,7 +815,22 @@ pub fn get_all_extensions_compatibility(
 
 #[tauri::command]
 pub fn uninstall_extension(app: tauri::AppHandle, slug: String) -> Result<(), String> {
+    // Reject slugs with path traversal components
+    if slug.contains("..") || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid extension slug".to_string());
+    }
+
     let extension_dir = get_extension_dir(&app, &slug)?;
+
+    // Verify resolved path is inside the plugins directory
+    let plugins_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "Failed to get app local data dir".to_string())?
+        .join("plugins");
+    if !extension_dir.starts_with(&plugins_dir) {
+        return Err("Invalid extension path".to_string());
+    }
 
     if !extension_dir.exists() {
         return Err(format!("Extension '{}' is not installed", slug));

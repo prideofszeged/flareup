@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
+use tokio::process::Command;
 
 /// Power management commands
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +24,7 @@ async fn execute_systemctl_command(action: &str) -> Result<(), String> {
     let output = Command::new("systemctl")
         .arg(action)
         .output()
+        .await
         .map_err(|e| format!("Failed to execute systemctl: {}", e))?;
 
     if !output.status.success() {
@@ -35,10 +36,11 @@ async fn execute_systemctl_command(action: &str) -> Result<(), String> {
 }
 
 /// Check if a command exists in PATH
-fn command_exists(cmd: &str) -> bool {
+async fn command_exists(cmd: &str) -> bool {
     Command::new("which")
         .arg(cmd)
         .output()
+        .await
         .map(|output| output.status.success())
         .unwrap_or(false)
 }
@@ -66,21 +68,23 @@ pub async fn execute_power_command(command: PowerCommand) -> Result<(), String> 
                 Command::new("cinnamon-screensaver-command")
                     .arg("-l")
                     .output()
+                    .await
             } else if de.contains("kde") || de.contains("plasma") {
                 tracing::info!("Using qdbus for KDE lock");
                 Command::new("qdbus")
                     .args(["org.kde.screensaver", "/ScreenSaver", "Lock"])
                     .output()
+                    .await
             } else if de.contains("xfce") {
                 tracing::info!("Using xflock4 for XFCE lock");
-                Command::new("xflock4").output()
+                Command::new("xflock4").output().await
             } else if de.contains("mate") {
                 tracing::info!("Using mate-screensaver-command for MATE lock");
-                Command::new("mate-screensaver-command").arg("-l").output()
+                Command::new("mate-screensaver-command").arg("-l").output().await
             } else {
                 // Fall back to loginctl for other DEs (GNOME, etc.)
                 tracing::info!("Using loginctl for lock (generic)");
-                Command::new("loginctl").arg("lock-session").output()
+                Command::new("loginctl").arg("lock-session").output().await
             };
 
             match lock_result {
@@ -109,10 +113,11 @@ pub async fn set_volume(level: u8) -> Result<(), String> {
     tracing::info!("Setting volume to {}%", level);
 
     // Try pactl first (PulseAudio/PipeWire)
-    if command_exists("pactl") {
+    if command_exists("pactl").await {
         let output = Command::new("pactl")
             .args(["set-sink-volume", "@DEFAULT_SINK@", &format!("{}%", level)])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute pactl: {}", e))?;
 
         if output.status.success() {
@@ -121,10 +126,11 @@ pub async fn set_volume(level: u8) -> Result<(), String> {
     }
 
     // Fallback to amixer (ALSA)
-    if command_exists("amixer") {
+    if command_exists("amixer").await {
         let output = Command::new("amixer")
             .args(["set", "Master", &format!("{}%", level)])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute amixer: {}", e))?;
 
         if output.status.success() {
@@ -140,10 +146,11 @@ pub async fn set_volume(level: u8) -> Result<(), String> {
 pub async fn volume_up() -> Result<(), String> {
     tracing::info!("Increasing volume");
 
-    if command_exists("pactl") {
+    if command_exists("pactl").await {
         let output = Command::new("pactl")
             .args(["set-sink-volume", "@DEFAULT_SINK@", "+5%"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute pactl: {}", e))?;
 
         if output.status.success() {
@@ -151,10 +158,11 @@ pub async fn volume_up() -> Result<(), String> {
         }
     }
 
-    if command_exists("amixer") {
+    if command_exists("amixer").await {
         let output = Command::new("amixer")
             .args(["set", "Master", "5%+"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute amixer: {}", e))?;
 
         if output.status.success() {
@@ -170,10 +178,11 @@ pub async fn volume_up() -> Result<(), String> {
 pub async fn volume_down() -> Result<(), String> {
     tracing::info!("Decreasing volume");
 
-    if command_exists("pactl") {
+    if command_exists("pactl").await {
         let output = Command::new("pactl")
             .args(["set-sink-volume", "@DEFAULT_SINK@", "-5%"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute pactl: {}", e))?;
 
         if output.status.success() {
@@ -181,10 +190,11 @@ pub async fn volume_down() -> Result<(), String> {
         }
     }
 
-    if command_exists("amixer") {
+    if command_exists("amixer").await {
         let output = Command::new("amixer")
             .args(["set", "Master", "5%-"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute amixer: {}", e))?;
 
         if output.status.success() {
@@ -200,10 +210,11 @@ pub async fn volume_down() -> Result<(), String> {
 pub async fn toggle_mute() -> Result<(), String> {
     tracing::info!("Toggling mute");
 
-    if command_exists("pactl") {
+    if command_exists("pactl").await {
         let output = Command::new("pactl")
             .args(["set-sink-mute", "@DEFAULT_SINK@", "toggle"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute pactl: {}", e))?;
 
         if output.status.success() {
@@ -211,10 +222,11 @@ pub async fn toggle_mute() -> Result<(), String> {
         }
     }
 
-    if command_exists("amixer") {
+    if command_exists("amixer").await {
         let output = Command::new("amixer")
             .args(["set", "Master", "toggle"])
             .output()
+            .await
             .map_err(|e| format!("Failed to execute amixer: {}", e))?;
 
         if output.status.success() {
@@ -228,11 +240,12 @@ pub async fn toggle_mute() -> Result<(), String> {
 /// Get current volume level and mute status
 #[tauri::command]
 pub async fn get_volume() -> Result<VolumeLevel, String> {
-    if command_exists("pactl") {
+    if command_exists("pactl").await {
         // Get volume
         let volume_output = Command::new("pactl")
             .args(["get-sink-volume", "@DEFAULT_SINK@"])
             .output()
+            .await
             .map_err(|e| format!("Failed to get volume: {}", e))?;
 
         let volume_str = String::from_utf8_lossy(&volume_output.stdout);
@@ -248,6 +261,7 @@ pub async fn get_volume() -> Result<VolumeLevel, String> {
         let mute_output = Command::new("pactl")
             .args(["get-sink-mute", "@DEFAULT_SINK@"])
             .output()
+            .await
             .map_err(|e| format!("Failed to get mute status: {}", e))?;
 
         let mute_str = String::from_utf8_lossy(&mute_output.stdout);
@@ -259,10 +273,11 @@ pub async fn get_volume() -> Result<VolumeLevel, String> {
         });
     }
 
-    if command_exists("amixer") {
+    if command_exists("amixer").await {
         let output = Command::new("amixer")
             .args(["get", "Master"])
             .output()
+            .await
             .map_err(|e| format!("Failed to get volume: {}", e))?;
 
         let output_str = String::from_utf8_lossy(&output.stdout);
@@ -325,6 +340,7 @@ pub async fn eject_drive(device: String) -> Result<(), String> {
     let output = Command::new("udisksctl")
         .args(["unmount", "-b", &device])
         .output()
+        .await
         .map_err(|e| format!("Failed to unmount: {}", e))?;
 
     if !output.status.success() {
@@ -335,7 +351,8 @@ pub async fn eject_drive(device: String) -> Result<(), String> {
     // Try to power off (optional, may not be supported on all devices)
     let _ = Command::new("udisksctl")
         .args(["power-off", "-b", &device])
-        .output();
+        .output()
+        .await;
 
     Ok(())
 }

@@ -921,12 +921,20 @@ pub async fn ai_ask_stream(
     // Tool calling loop - may need multiple rounds
     let max_tool_rounds = 10;
     let mut tool_round = 0;
+    let mut last_full_text = String::new();
 
     loop {
         tool_round += 1;
         tracing::info!(round = tool_round, "Starting tool round");
         if tool_round > max_tool_rounds {
             tracing::warn!("Max tool rounds exceeded, stopping");
+            let _ = app_handle.emit(
+                "ai-stream-end",
+                serde_json::json!({
+                    "request_id": request_id,
+                    "full_text": last_full_text,
+                }),
+            );
             break;
         }
 
@@ -1073,6 +1081,9 @@ pub async fn ai_ask_stream(
                 });
             }
         }
+
+        // Update last_full_text for max_tool_rounds fallback
+        last_full_text = full_text.clone();
 
         // If no tool calls, we're done
         tracing::info!(

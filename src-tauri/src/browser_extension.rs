@@ -195,10 +195,11 @@ pub async fn run_server(app_handle: AppHandle) {
 pub async fn browser_extension_check_connection(
     state: tauri::State<'_, WsState>,
 ) -> Result<bool, String> {
-    Ok(*state
+    let connected = *state
         .is_connected
         .lock()
-        .expect("is_connected mutex poisoned"))
+        .map_err(|e| format!("is_connected mutex poisoned: {e}"))?;
+    Ok(connected)
 }
 
 #[tauri::command]
@@ -210,7 +211,8 @@ pub async fn browser_extension_request(
     use std::time::Duration;
 
     let tx = {
-        let lock = state.connection.lock().expect("connection mutex poisoned");
+        let lock = state.connection.lock()
+            .map_err(|e| format!("connection mutex poisoned: {e}"))?;
         lock.clone()
     };
 
@@ -219,7 +221,7 @@ pub async fn browser_extension_request(
             let mut counter = state
                 .request_id_counter
                 .lock()
-                .expect("request_id_counter mutex poisoned");
+                .map_err(|e| format!("request_id_counter mutex poisoned: {e}"))?;
             *counter += 1;
             *counter
         };
@@ -235,7 +237,7 @@ pub async fn browser_extension_request(
         state
             .pending_requests
             .lock()
-            .expect("pending_requests mutex poisoned")
+            .map_err(|e| format!("pending_requests mutex poisoned: {e}"))?
             .insert(request_id, response_tx);
 
         if tx.send(request.to_string()).await.is_err() {
@@ -244,8 +246,14 @@ pub async fn browser_extension_request(
 
         match tokio::time::timeout(Duration::from_secs(5), response_rx).await {
             Ok(Ok(result)) => result,
-            Ok(Err(_)) => Err("Request cancelled".into()),
-            Err(_) => Err("Request timed out".into()),
+            Ok(Err(_)) => {
+                state.pending_requests.lock().ok().map(|mut m| m.remove(&request_id));
+                Err("Request cancelled".into())
+            }
+            Err(_) => {
+                state.pending_requests.lock().ok().map(|mut m| m.remove(&request_id));
+                Err("Request timed out".into())
+            }
         }
     } else {
         Err("Browser extension not connected".into())

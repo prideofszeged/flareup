@@ -237,6 +237,11 @@
 			(event) => {
 				const { text } = event.payload;
 				messages[messages.length - 1].content += text;
+				tick().then(() => {
+					if (scrollContainer) {
+						scrollContainer.scrollTop = scrollContainer.scrollHeight;
+					}
+				});
 			}
 		);
 

@@ -448,8 +448,9 @@ fn execute_search_files(args: &Value, allowed_dirs: &[String]) -> Result<String,
         return Err(format!("Path '{}' is not in allowed directories", dir_str));
     }
 
-    // Simple glob-like matching
-    let pattern_regex = pattern.replace("*", ".*").replace("?", ".");
+    // Simple glob-like matching: escape regex metacharacters first, then convert glob wildcards
+    let escaped = regex::escape(pattern);
+    let pattern_regex = escaped.replace(r"\*", ".*").replace(r"\?", ".");
     let regex = regex::Regex::new(&format!("^{}$", pattern_regex))
         .map_err(|e| format!("Invalid pattern: {}", e))?;
 

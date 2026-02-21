@@ -178,7 +178,8 @@ impl FileSearchManager {
              LIMIT ?2",
         )?;
 
-        let search_term = format!("\"{}\"*", term);
+        let sanitized = term.replace('"', "");
+        let search_term = format!("\"{}\"*", sanitized);
         let files_iter = stmt.query_map(params![search_term, limit], |row| {
             Ok(IndexedFile {
                 path: row.get(0)?,
