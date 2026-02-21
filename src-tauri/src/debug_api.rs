@@ -449,7 +449,7 @@ async fn execute_command(
     axum::extract::Path(command_name): axum::extract::Path<String>,
     body: Option<Json<CommandRequest>>,
 ) -> Json<ApiResponse<Value>> {
-    let params = body.and_then(|b| b.params.clone()).unwrap_or(json!({}));
+    let _params = body.and_then(|b| b.params.clone()).unwrap_or(json!({}));
 
     // Whitelist of safe read-only commands
     let result = match command_name.as_str() {

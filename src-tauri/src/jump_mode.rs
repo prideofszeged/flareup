@@ -28,12 +28,14 @@ impl Default for JumpModeConfig {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg(test)]
 pub struct JumpModeState {
     pub last_query: Option<String>,
     pub last_results: Vec<String>,
     pub search_count: u64,
 }
 
+#[cfg(test)]
 impl Default for JumpModeState {
     fn default() -> Self {
         Self {
@@ -44,6 +46,7 @@ impl Default for JumpModeState {
     }
 }
 
+#[cfg(test)]
 impl JumpModeState {
     pub fn new() -> Self {
         Self::default()
