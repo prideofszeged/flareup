@@ -146,6 +146,7 @@ impl ScriptCommandManager {
         let mut authors = None;
         let mut description = None;
         let mut needs_confirmation = false;
+        let mut refresh_time: Option<String> = None;
         let mut arguments = Vec::new();
 
         let re_kv = Regex::new(r"@raycast\.([a-zA-Z0-9]+)\s+(.+)").unwrap();
@@ -170,6 +171,7 @@ impl ScriptCommandManager {
                     "author" | "authors" => authors = Some(value.to_string()),
                     "description" => description = Some(value.to_string()),
                     "needsConfirmation" => needs_confirmation = value == "true",
+                    "refreshTime" => refresh_time = Some(value.to_string()),
                     _ => {
                         if key.starts_with("argument") {
                             // Handled by specific regex below, but this block catches others
@@ -213,7 +215,7 @@ impl ScriptCommandManager {
             description,
             arguments,
             needs_confirmation,
-            refresh_time: None,
+            refresh_time,
         })
     }
 
