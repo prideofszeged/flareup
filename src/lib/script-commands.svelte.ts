@@ -21,6 +21,7 @@ export type ScriptCommand = {
 	description?: string;
 	arguments: ScriptArgument[];
 	needsConfirmation: boolean;
+	refreshTime?: string;
 };
 
 class ScriptCommandsStore {
