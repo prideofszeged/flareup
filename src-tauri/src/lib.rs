@@ -1,41 +1,70 @@
 mod ai;
+mod ai_commands;
+mod ai_presets;
+mod ai_tools; // AI function calling tools
+mod aliases;
 mod app;
+mod auto_start;
 mod browser_extension;
 mod cache;
 mod cli_substitutes;
 mod clipboard;
 pub mod clipboard_history;
+mod debug_api;
 mod desktop;
+pub mod dmenu;
+mod downloads;
 mod error;
 mod extension_shims;
 mod extensions;
 mod file_search;
 mod filesystem;
+mod floating_notes;
 mod frecency;
+mod hotkey_manager;
 mod integrations;
+mod jump_mode;
 mod oauth;
+mod process_management;
 mod quick_toggles;
 mod quicklinks;
+mod script_commands;
+mod settings;
+mod shim_registry;
 mod snippets;
 mod soulver;
 mod store;
 mod system;
+mod system_commands;
 mod system_monitors;
+mod window_management;
 
 use crate::snippets::input_manager::{EvdevInputManager, InputManager, RdevInputManager};
 use crate::{app::App, cache::AppCache};
 use ai::AiUsageManager;
+use aliases::AliasManager;
 use browser_extension::WsState;
+use floating_notes::FloatingNotesManager;
 use frecency::FrecencyManager;
 use quicklinks::QuicklinkManager;
+use script_commands::ScriptCommandManager;
 use selection::get_text;
 use snippets::engine::ExpansionEngine;
 use snippets::manager::SnippetManager;
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+};
 use tauri::{Emitter, Manager};
+
+use dmenu::DmenuSession;
+
+// Global state for dmenu session (only used in dmenu mode)
+static DMENU_SESSION: Mutex<Option<DmenuSession>> = Mutex::new(None);
 
 #[tauri::command]
 fn get_installed_apps(app: tauri::AppHandle) -> Vec<App> {
@@ -166,10 +195,14 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
         Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
     };
 
-    let spotlight_shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::ALT), Code::Space);
+    let spotlight_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
 
     // Register the shortcut handler
-    tracing::info!("Registering global shortcut: Super+Alt+Space");
+    tracing::info!("Registering global shortcut: Ctrl+Alt+Space");
+
+    // Try to unregister first in case it's still registered from a previous crashed session
+    let _ = app.global_shortcut().unregister(spotlight_shortcut);
+
     app.global_shortcut()
         .on_shortcut(spotlight_shortcut, move |app, shortcut, event| {
             tracing::debug!(
@@ -190,11 +223,34 @@ fn setup_global_shortcut(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
                         Ok(false) => {
                             tracing::debug!("Window hidden, showing");
                             let _ = window.show();
-                            // Small delay to ensure window is fully visible before focusing
+                            // Ensure window is on top (Linux WMs sometimes ignore config setting)
+                            let _ = window.set_always_on_top(true);
+                            // Request focus immediately
+                            let _ = window.set_focus();
+                            // Use xdotool to force focus via mouse click (bypasses WM focus-stealing prevention)
                             let window_clone = window.clone();
                             tauri::async_runtime::spawn(async move {
-                                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                                let _ = window_clone.set_focus();
+                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                                // Get window position and size to click in the center (on the input)
+                                if let (Ok(pos), Ok(size)) =
+                                    (window_clone.outer_position(), window_clone.outer_size())
+                                {
+                                    // Click near the top center where the search input is
+                                    let click_x = pos.x + (size.width as i32 / 2);
+                                    let click_y = pos.y + 40; // Near top for the input
+                                    let _ = std::process::Command::new("xdotool")
+                                        .args([
+                                            "mousemove",
+                                            "--sync",
+                                            &click_x.to_string(),
+                                            &click_y.to_string(),
+                                            "click",
+                                            "1",
+                                        ])
+                                        .stderr(std::process::Stdio::null())
+                                        .stdout(std::process::Stdio::null())
+                                        .spawn();
+                                }
                             });
                         }
                         Err(e) => {
@@ -263,6 +319,49 @@ fn shim_run_applescript(script: String) -> extension_shims::ShimResult {
 #[tauri::command]
 fn shim_get_system_info() -> std::collections::HashMap<String, String> {
     extension_shims::SystemShim::get_system_info()
+}
+
+// Shim registry commands (Mason-like tool installation)
+#[tauri::command]
+fn shim_scan_extension(extension_code: String) -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry
+        .find_tools_in_code(&extension_code)
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+#[tauri::command]
+fn shim_get_all_tools() -> Vec<shim_registry::ToolMapping> {
+    let registry = shim_registry::ToolRegistry::new();
+    registry.all().into_iter().cloned().collect()
+}
+
+#[tauri::command]
+fn shim_check_tool_installed(test_command: String) -> bool {
+    shim_registry::is_tool_installed(&test_command)
+}
+
+#[tauri::command]
+fn shim_get_shim_dir() -> String {
+    shim_registry::get_shim_dir().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+fn shim_install_wrapper_scripts(tool_names: Vec<String>) -> Result<(), String> {
+    let registry = shim_registry::ToolRegistry::new();
+    let mappings: Vec<&shim_registry::ToolMapping> = tool_names
+        .iter()
+        .filter_map(|name| registry.get(name))
+        .collect();
+
+    shim_registry::install_shims(&mappings)
+}
+
+#[tauri::command]
+fn shim_detect_distro() -> String {
+    format!("{:?}", shim_registry::detect_distro())
 }
 
 // System monitor commands
@@ -477,14 +576,44 @@ async fn github_get_repo(
     client.get_repo(&owner, &repo).await
 }
 
+// Jump Mode commands
+#[tauri::command]
+fn jump_mode_search(query: String) -> Result<Vec<String>, String> {
+    let config = jump_mode::JumpModeConfig::default();
+    jump_mode::execute_fd_search(&query, &config, None)
+}
+
+#[tauri::command]
+fn jump_mode_open(path: String) -> Result<(), String> {
+    jump_mode::open_in_editor(&path)
+}
+
+#[tauri::command]
+fn jump_mode_config() -> jump_mode::JumpModeConfig {
+    jump_mode::JumpModeConfig::default()
+}
+
+#[tauri::command]
+fn jump_mode_is_available() -> bool {
+    jump_mode::is_fd_available()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+
 pub fn run() {
-    // Initialize tracing subscriber for structured logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
+    // Initialize tracing subscriber for structured logging with log capture layer
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer().with_filter(
+                tracing_subscriber::EnvFilter::from_default_env()
+                    .add_directive(tracing::Level::INFO.into()),
+            ),
         )
+        .with(debug_api::LogCaptureLayer)
         .init();
 
     let app = tauri::Builder::default()
@@ -576,6 +705,12 @@ pub fn run() {
             shim_translate_path,
             shim_run_applescript,
             shim_get_system_info,
+            shim_scan_extension,
+            shim_get_all_tools,
+            shim_check_tool_installed,
+            shim_get_shim_dir,
+            shim_install_wrapper_scripts,
+            shim_detect_distro,
             monitor_get_cpu,
             monitor_get_memory,
             monitor_get_disks,
@@ -610,19 +745,131 @@ pub fn run() {
             ai::list_conversations,
             ai::get_conversation,
             ai::update_conversation,
-            ai::delete_conversation
+            ai::delete_conversation,
+            ai_presets::list_ai_presets,
+            ai_presets::create_ai_preset,
+            ai_presets::update_ai_preset,
+            ai_presets::delete_ai_preset,
+            aliases::get_aliases,
+            aliases::set_alias,
+            aliases::remove_alias,
+            script_commands::get_script_commands,
+            script_commands::run_script_command,
+            script_commands::open_scripts_folder,
+            floating_notes::get_floating_note,
+            floating_notes::save_floating_note,
+            floating_notes::toggle_floating_notes_window,
+            system_commands::execute_power_command,
+            system_commands::set_volume,
+            system_commands::volume_up,
+            system_commands::volume_down,
+            system_commands::toggle_mute,
+            system_commands::get_volume,
+            system_commands::empty_trash,
+            system_commands::eject_drive,
+            window_management::snap_active_window,
+            window_management::get_available_monitors,
+            window_management::move_window_to_monitor,
+            hotkey_manager::get_hotkey_config,
+            hotkey_manager::set_command_hotkey,
+            hotkey_manager::remove_command_hotkey,
+            hotkey_manager::check_hotkey_conflict,
+            hotkey_manager::reset_hotkeys_to_defaults,
+            downloads::downloads_get_items,
+            downloads::downloads_open_file,
+            downloads::downloads_show_in_folder,
+            downloads::downloads_delete_item,
+            downloads::downloads_delete_file,
+            downloads::downloads_clear_history,
+            downloads::downloads_get_latest,
+            downloads::downloads_copy_latest,
+            extensions::get_extension_compatibility,
+            extensions::get_all_extensions_compatibility,
+            extensions::uninstall_extension,
+            settings::get_app_settings,
+            settings::save_app_settings,
+            settings::reset_app_settings,
+            auto_start::set_auto_start_enabled,
+            auto_start::get_auto_start_enabled,
+            ai_commands::create_ai_command,
+            ai_commands::list_ai_commands,
+            ai_commands::get_ai_command,
+            ai_commands::update_ai_command,
+            ai_commands::delete_ai_command,
+            ai_commands::substitute_placeholders,
+            ai_commands::get_available_placeholders,
+            ai_presets::create_ai_preset,
+            ai_presets::list_ai_presets,
+            ai_presets::get_ai_preset,
+            ai_presets::update_ai_preset,
+            ai_presets::delete_ai_preset,
+            // Jump Mode
+            jump_mode_search,
+            jump_mode_open,
+            jump_mode_config,
+            jump_mode_is_available,
+            // AI Tools
+            ai_tools::get_ai_tool_definitions,
+            ai_tools::check_model_supports_tools,
+            ai_tools::execute_ai_tool,
+            // Process Management
+            process_management::process_list,
+            process_management::process_search,
+            process_management::process_kill,
+            process_management::port_list_open,
+            process_management::port_get_process,
+            process_management::port_kill_process,
+            process_management::list_windows
         ])
         .setup(|app| {
             let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(browser_extension::run_server(app_handle));
+            tauri::async_runtime::spawn(browser_extension::run_server(app_handle.clone()));
+
+            // Spawn debug API server for development and MCP integration
+            tauri::async_runtime::spawn(debug_api::run_server(app_handle));
 
             clipboard_history::init(app.handle().clone());
             file_search::init(app.handle().clone());
+            downloads::init(app.handle().clone());
 
             app.manage(QuicklinkManager::new(app.handle())?);
             app.manage(FrecencyManager::new(app.handle())?);
             app.manage(SnippetManager::new(app.handle())?);
             app.manage(AiUsageManager::new(app.handle())?);
+            app.manage(AliasManager::new(app.handle())?);
+            app.manage(ScriptCommandManager::new(app.handle()));
+            app.manage(FloatingNotesManager::new(app.handle())?);
+            app.manage(settings::SettingsManager::new(app.handle())?);
+
+            // Initialize hotkey manager
+            let hotkey_manager = hotkey_manager::HotkeyManager::new(app.handle())?;
+
+            // Load and register saved hotkeys
+            if let Ok(saved_hotkeys) = hotkey_manager.get_all_hotkeys() {
+                tracing::info!("Loading {} saved hotkeys", saved_hotkeys.len());
+
+                for config in saved_hotkeys {
+                    if let Some(mods) = hotkey_manager::modifiers_from_bits(config.modifiers) {
+                        if let Some(code) = hotkey_manager::string_to_code(&config.key) {
+                            let shortcut =
+                                tauri_plugin_global_shortcut::Shortcut::new(Some(mods), code);
+                            if let Err(e) = hotkey_manager.register_shortcut(
+                                app.handle(),
+                                config.command_id.clone(),
+                                shortcut,
+                            ) {
+                                tracing::error!(
+                                    "Failed to register hotkey for {}: {}",
+                                    config.command_id,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            app.manage(hotkey_manager);
 
             setup_background_refresh(app.handle().clone());
             if let Err(e) = setup_global_shortcut(app) {
@@ -637,6 +884,41 @@ pub fn run() {
                 .join("SoulverWrapper/Vendor/SoulverCore-linux");
 
             soulver::initialize(soulver_core_path.to_str().unwrap());
+
+            let quit_i = MenuItem::with_id(app.handle(), "quit", "Quit", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app.handle(), "show", "Show Flare", true, None::<&str>)?;
+            let menu = Menu::with_items(app.handle(), &[&show_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .icon(app.default_window_icon().unwrap().clone())
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app.handle())?;
 
             Ok(())
         })
@@ -654,12 +936,158 @@ pub fn run() {
                         }
                     }
                     tauri::WindowEvent::Focused(false) => {
+                        tracing::debug!("Window lost focus");
                         if let Some(window) = app.get_webview_window("main") {
-                            if !cfg!(debug_assertions) {
-                                let _ = window.hide();
+                            // Check if close on blur is enabled in settings
+                            if let Some(settings_manager) =
+                                app.try_state::<settings::SettingsManager>()
+                            {
+                                match settings_manager.get_settings() {
+                                    Ok(settings) => {
+                                        if settings.close_on_blur {
+                                            // Debounce: wait a moment and check if still unfocused
+                                            // This prevents false triggers from UI interactions like
+                                            // clicking settings tabs or select dropdowns
+                                            let window_clone = window.clone();
+                                            tauri::async_runtime::spawn(async move {
+                                                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                                                // Re-check if window is still unfocused
+                                                if let Ok(focused) = window_clone.is_focused() {
+                                                    if !focused {
+                                                        tracing::debug!("Hiding window due to close on blur (after debounce)");
+                                                        let _ = window_clone.hide();
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Failed to get settings: {}", e);
+                                    }
+                                }
                             }
                         }
                     }
+                    _ => {}
+                }
+            }
+        }
+    });
+}
+
+// ============================================================================
+// dmenu Mode
+// ============================================================================
+
+#[tauri::command]
+fn dmenu_get_items() -> Vec<String> {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.items.clone())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+fn dmenu_get_prompt() -> String {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.prompt.clone())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+fn dmenu_get_case_insensitive() -> bool {
+    DMENU_SESSION
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.case_insensitive)
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn dmenu_select_item(item: String) {
+    if let Some(session) = DMENU_SESSION
+        .lock()
+        .expect("dmenu session mutex poisoned")
+        .as_ref()
+    {
+        session.output_selection(&item);
+    }
+    std::process::exit(0);
+}
+
+#[tauri::command]
+fn dmenu_cancel() {
+    std::process::exit(1);
+}
+
+/// Entry point for dmenu mode - runs a minimal Tauri app for menu selection
+pub fn run_dmenu(session: DmenuSession) {
+    // Initialize tracing subscriber for structured logging with log capture layer
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer().with_filter(
+                tracing_subscriber::EnvFilter::from_default_env()
+                    .add_directive(tracing::Level::INFO.into()),
+            ),
+        )
+        .with(debug_api::LogCaptureLayer)
+        .init();
+
+    // Store the session in global state
+    *DMENU_SESSION.lock().expect("dmenu session mutex poisoned") = Some(session);
+
+    tracing::info!("Starting Flare in dmenu mode");
+
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![
+            dmenu_get_items,
+            dmenu_get_prompt,
+            dmenu_get_case_insensitive,
+            dmenu_select_item,
+            dmenu_cancel
+        ])
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+
+                // Delay the event emission to ensure WebView is ready
+                let window_clone = window.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    let _ = window_clone.emit("dmenu-mode", ());
+                });
+            } else {
+                tracing::error!("dmenu: main window not found");
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error building dmenu app");
+
+    app.run(|_app, event| {
+        if let tauri::RunEvent::WindowEvent { label, event, .. } = event {
+            if label == "main" {
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        // Cancel on window close
+                        std::process::exit(1);
+                    }
+                    // Don't exit on focus loss - let the user press Escape to cancel
+                    // This was causing immediate exit on window show
                     _ => {}
                 }
             }

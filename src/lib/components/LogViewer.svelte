@@ -20,7 +20,7 @@
 			scrollAreaRef.scrollTop = scrollAreaRef.scrollHeight;
 		}
 		// React to logs changes
-		logs;
+		void logs;
 	});
 
 	function handleClearLogs() {

@@ -28,8 +28,8 @@ export default defineConfig({
 			}
 			: { overlay: false },
 		watch: {
-			// 3. tell vite to ignore watching `src-tauri`
-			ignored: ['**/src-tauri/**']
+			// 3. tell vite to ignore watching `src-tauri` and mcp-server
+			ignored: ['**/src-tauri/**', '**/packages/mcp-server/**']
 		},
 		fs: {
 			allow: [searchForWorkspaceRoot(process.cwd())]

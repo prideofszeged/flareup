@@ -28,12 +28,19 @@
 	import starsSquareIcon from '$lib/assets/stars-square-1616x16@2x.png?inline';
 	import { invoke } from '@tauri-apps/api/core';
 	import AiChatView from '$lib/components/AiChatView.svelte';
+	import DmenuView from '$lib/components/DmenuView.svelte';
+	import DownloadsView from '$lib/components/DownloadsView.svelte';
+	import QuickAiView from '$lib/components/QuickAiView.svelte';
+	import JumpMode from '$lib/components/JumpMode.svelte';
+	import ProcessManager from '$lib/components/ProcessManager.svelte';
+	import QuickKill from '$lib/components/QuickKill.svelte';
 
 	const storePlugin: PluginInfo = {
 		title: 'Store',
 		description: 'Browse and install new extensions from the Store',
 		pluginTitle: 'Raycast',
 		pluginName: 'raycast',
+		pluginSlug: 'raycast',
 		commandName: 'store',
 		pluginPath: 'builtin:store',
 		icon: storeCommandIcon,
@@ -47,6 +54,7 @@
 		description: 'View, search, and manage your clipboard history',
 		pluginTitle: 'Flare',
 		pluginName: 'clipboard-history',
+		pluginSlug: 'clipboard-history',
 		commandName: 'clipboard-history',
 		pluginPath: 'builtin:history',
 		icon: clipboardHistoryCommandIcon,
@@ -60,6 +68,7 @@
 		description: 'Search and manage your snippets',
 		pluginTitle: 'Snippets',
 		pluginName: 'snippets',
+		pluginSlug: 'snippets',
 		commandName: 'search-snippets',
 		pluginPath: 'builtin:search-snippets',
 		icon: snippetIcon,
@@ -73,6 +82,7 @@
 		description: 'Create a new Quicklink',
 		pluginTitle: 'Flare',
 		pluginName: 'flare',
+		pluginSlug: 'flare',
 		commandName: 'create-quicklink',
 		pluginPath: 'builtin:create-quicklink',
 		icon: quicklinkIcon,
@@ -86,6 +96,7 @@
 		description: 'Create a new snippet',
 		pluginTitle: 'Flare',
 		pluginName: 'snippets',
+		pluginSlug: 'snippets',
 		commandName: 'create-snippet',
 		pluginPath: 'builtin:create-snippet',
 		icon: snippetIcon,
@@ -99,6 +110,7 @@
 		description: 'Import snippets from a JSON file',
 		pluginTitle: 'Flare',
 		pluginName: 'snippets',
+		pluginSlug: 'snippets',
 		commandName: 'import-snippets',
 		pluginPath: 'builtin:import-snippets',
 		icon: snippetIcon,
@@ -112,6 +124,7 @@
 		description: 'Find files and folders on your computer',
 		pluginTitle: 'Flare',
 		pluginName: 'file-search',
+		pluginSlug: 'file-search',
 		commandName: 'search-files',
 		pluginPath: 'builtin:file-search',
 		icon: fileSearchCommandIcon,
@@ -120,16 +133,383 @@
 		owner: 'flare'
 	};
 
+	const jumpModePlugin: PluginInfo = {
+		title: 'Jump to File',
+		description: 'Fuzzy search and open any file (requires fd)',
+		pluginTitle: 'Flare',
+		pluginName: 'file-search',
+		pluginSlug: 'file-search',
+		commandName: 'jump-to-file',
+		pluginPath: 'builtin:jump-mode',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
 	const aiChatPlugin: PluginInfo = {
-		title: 'Ask AI',
+		title: 'AI Chat',
 		description: 'Chat with AI to answer questions, write code, and more',
 		pluginTitle: 'AI',
 		pluginName: 'ai',
+		pluginSlug: 'ai',
 		commandName: 'ask-ai',
 		pluginPath: 'builtin:ai-chat',
 		icon: starsSquareIcon,
 		preferences: [],
 		mode: 'view',
+		owner: 'flare'
+	};
+
+	const downloadsPlugin: PluginInfo = {
+		title: 'Downloads',
+		description: 'View and manage your recent downloads',
+		pluginTitle: 'Flare',
+		pluginName: 'downloads',
+		pluginSlug: 'downloads',
+		commandName: 'downloads',
+		pluginPath: 'builtin:downloads',
+		icon: fileSearchCommandIcon, // reusing file search icon for now
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	const openLatestDownloadPlugin: PluginInfo = {
+		title: 'Open Latest Download',
+		description: 'Open the most recent download',
+		pluginTitle: 'Downloads',
+		pluginName: 'downloads',
+		pluginSlug: 'downloads',
+		commandName: 'open-latest',
+		pluginPath: 'builtin:open-latest-download',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const copyLatestDownloadPlugin: PluginInfo = {
+		title: 'Copy Latest Download',
+		description: 'Copy the most recent download path to clipboard',
+		pluginTitle: 'Downloads',
+		pluginName: 'downloads',
+		pluginSlug: 'downloads',
+		commandName: 'copy-latest',
+		pluginPath: 'builtin:copy-latest-download',
+		icon: fileSearchCommandIcon,
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const settingsPlugin: PluginInfo = {
+		title: 'Flareup Settings',
+		description: 'Configure Flareup preferences and options',
+		pluginTitle: 'Flare',
+		pluginName: 'flare',
+		pluginSlug: 'flare',
+		commandName: 'settings',
+		pluginPath: 'builtin:settings',
+		icon: storeCommandIcon, // reusing store icon for now
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	// System Commands
+	const lockScreenPlugin: PluginInfo = {
+		title: 'Lock Screen',
+		description: 'Lock your screen',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'lock-screen',
+		pluginPath: 'builtin:lock-screen',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const sleepPlugin: PluginInfo = {
+		title: 'Sleep',
+		description: 'Put your computer to sleep',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'sleep',
+		pluginPath: 'builtin:sleep',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const shutdownPlugin: PluginInfo = {
+		title: 'Shut Down',
+		description: 'Shut down your computer',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'shutdown',
+		pluginPath: 'builtin:shutdown',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const restartPlugin: PluginInfo = {
+		title: 'Restart',
+		description: 'Restart your computer',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'restart',
+		pluginPath: 'builtin:restart',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const volumeUpPlugin: PluginInfo = {
+		title: 'Volume Up',
+		description: 'Increase system volume',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'volume-up',
+		pluginPath: 'builtin:volume-up',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const volumeDownPlugin: PluginInfo = {
+		title: 'Volume Down',
+		description: 'Decrease system volume',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'volume-down',
+		pluginPath: 'builtin:volume-down',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const toggleMutePlugin: PluginInfo = {
+		title: 'Toggle Mute',
+		description: 'Mute or unmute system audio',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'toggle-mute',
+		pluginPath: 'builtin:toggle-mute',
+		icon: '', // TODO: Add icon
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const emptyTrashPlugin: PluginInfo = {
+		title: 'Empty Trash',
+		description: 'Permanently delete all items in trash',
+		pluginTitle: 'System',
+		pluginName: 'system',
+		pluginSlug: 'system',
+		commandName: 'empty-trash',
+		pluginPath: 'builtin:empty-trash',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const processManagerPlugin: PluginInfo = {
+		title: 'Process Manager',
+		description: 'View, search and kill running processes. Find and kill processes on ports.',
+		pluginTitle: 'System',
+		pluginName: 'process-manager',
+		pluginSlug: 'process-manager',
+		commandName: 'process-manager',
+		pluginPath: 'builtin:process-manager',
+		icon: '',
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	const quickKillPlugin: PluginInfo = {
+		title: 'Quick Kill',
+		description: 'Force quit running applications',
+		pluginTitle: 'System',
+		pluginName: 'quick-kill',
+		pluginSlug: 'quick-kill',
+		commandName: 'quick-kill',
+		pluginPath: 'builtin:quick-kill',
+		icon: '',
+		preferences: [],
+		mode: 'view',
+		owner: 'flare'
+	};
+
+	// Window Management
+	const snapLeftPlugin: PluginInfo = {
+		title: 'Snap Window Left Half',
+		description: 'Move window to left half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-left',
+		pluginPath: 'builtin:snap-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapRightPlugin: PluginInfo = {
+		title: 'Snap Window Right Half',
+		description: 'Move window to right half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-right',
+		pluginPath: 'builtin:snap-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopPlugin: PluginInfo = {
+		title: 'Snap Window Top Half',
+		description: 'Move window to top half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-top',
+		pluginPath: 'builtin:snap-top',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Half',
+		description: 'Move window to bottom half of screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-bottom',
+		pluginPath: 'builtin:snap-bottom',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopLeftPlugin: PluginInfo = {
+		title: 'Snap Window Top Left',
+		description: 'Move window to top left quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-top-left',
+		pluginPath: 'builtin:snap-top-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapTopRightPlugin: PluginInfo = {
+		title: 'Snap Window Top Right',
+		description: 'Move window to top right quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-top-right',
+		pluginPath: 'builtin:snap-top-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomLeftPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Left',
+		description: 'Move window to bottom left quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-bottom-left',
+		pluginPath: 'builtin:snap-bottom-left',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const snapBottomRightPlugin: PluginInfo = {
+		title: 'Snap Window Bottom Right',
+		description: 'Move window to bottom right quarter',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'snap-bottom-right',
+		pluginPath: 'builtin:snap-bottom-right',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const centerWindowPlugin: PluginInfo = {
+		title: 'Center Window',
+		description: 'Center window on screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'center',
+		pluginPath: 'builtin:center-window',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const maximizeWindowPlugin: PluginInfo = {
+		title: 'Maximize Window',
+		description: 'Maximize window to full screen',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'maximize',
+		pluginPath: 'builtin:maximize-window',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
+		owner: 'flare'
+	};
+
+	const almostMaximizePlugin: PluginInfo = {
+		title: 'Almost Maximize Window',
+		description: 'Maximize window with padding',
+		pluginTitle: 'Window',
+		pluginName: 'window',
+		pluginSlug: 'window',
+		commandName: 'almost-maximize',
+		pluginPath: 'builtin:almost-maximize',
+		icon: '',
+		preferences: [],
+		mode: 'no-view',
 		owner: 'flare'
 	};
 
@@ -143,7 +523,35 @@
 		createSnippetPlugin,
 		importSnippetsPlugin,
 		fileSearchPlugin,
-		aiChatPlugin
+		jumpModePlugin,
+		aiChatPlugin,
+		downloadsPlugin,
+		openLatestDownloadPlugin,
+		copyLatestDownloadPlugin,
+		settingsPlugin,
+		// System commands
+		lockScreenPlugin,
+		sleepPlugin,
+		shutdownPlugin,
+		restartPlugin,
+		volumeUpPlugin,
+		volumeDownPlugin,
+		toggleMutePlugin,
+		emptyTrashPlugin,
+		processManagerPlugin,
+		quickKillPlugin,
+		// Window management
+		snapLeftPlugin,
+		snapRightPlugin,
+		snapTopPlugin,
+		snapBottomPlugin,
+		snapTopLeftPlugin,
+		snapTopRightPlugin,
+		snapBottomLeftPlugin,
+		snapBottomRightPlugin,
+		centerWindowPlugin,
+		maximizeWindowPlugin,
+		almostMaximizePlugin
 	]);
 
 	const {
@@ -153,12 +561,41 @@
 		quicklinkToEdit,
 		snippetToEdit,
 		snippetsForImport,
-		commandToConfirm
+		commandToConfirm,
+		quickAiPrompt,
+		quickAiSelection
 	} = $derived(viewManager);
 
 	let showLogViewer = $state(false);
+	let dmenuMode = $state(false);
 
 	onMount(() => {
+		// Listen for dmenu mode activation FIRST (before any other init)
+		const unlistenDmenu = listen('dmenu-mode', () => {
+			dmenuMode = true;
+		});
+
+		// If we're in dmenu mode, skip normal app initialization
+		// The dmenu event may have already been emitted, so we need to query for it
+		invoke('dmenu_get_items')
+			.then((items: unknown) => {
+				// If this succeeds, we're in dmenu mode
+				if (Array.isArray(items) && items.length >= 0) {
+					dmenuMode = true;
+				}
+			})
+			.catch(() => {
+				// Not in dmenu mode - proceed with normal initialization
+				initNormalMode();
+			});
+
+		return () => {
+			sidecarService.stop();
+			unlistenDmenu.then((fn) => fn());
+		};
+	});
+
+	function initNormalMode() {
 		sidecarService.setOnGoBackToPluginList(viewManager.showCommandPalette);
 		sidecarService.start();
 
@@ -170,15 +607,23 @@
 				console.error('Failed to discover plugins:', e);
 			});
 
-		const unlisten = listen<string>('deep-link', (event) => {
+		listen<string>('deep-link', (event) => {
 			viewManager.handleDeepLink(event.payload, allPlugins);
 		});
 
-		return () => {
-			sidecarService.stop();
-			unlisten.then((fn) => fn());
-		};
-	});
+		// Listen for hotkey-triggered commands
+		listen<string>('execute-command', (event) => {
+			const commandId = event.payload;
+
+			// Find the plugin for this command
+			const plugin = allPlugins.find((p) => p.pluginPath === commandId);
+			if (plugin) {
+				viewManager.runPlugin(plugin);
+			} else {
+				console.error('[Hotkey] Command not found:', commandId);
+			}
+		});
+	}
 
 	$effect(() => {
 		viewManager.oauthState = sidecarService.oauthState;
@@ -265,7 +710,9 @@
 	/>
 {/if}
 
-{#if currentView === 'command-palette'}
+{#if dmenuMode}
+	<DmenuView />
+{:else if currentView === 'command-palette'}
 	<CommandPalette plugins={allPlugins} onRunPlugin={viewManager.runPlugin} />
 {:else if currentView === 'settings'}
 	<SettingsView
@@ -274,6 +721,7 @@
 		onSavePreferences={handleSavePreferences}
 		onGetPreferences={handleGetPreferences}
 		{currentPreferences}
+		onRefreshPlugins={onExtensionInstalled}
 	/>
 {:else if currentView === 'extensions-store'}
 	<Extensions onBack={viewManager.showCommandPalette} onInstall={onExtensionInstalled} />
@@ -301,8 +749,22 @@
 	<ImportSnippets onBack={viewManager.showCommandPalette} snippetsToImport={snippetsForImport} />
 {:else if currentView === 'file-search'}
 	<FileSearchView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'jump-mode'}
+	<JumpMode />
 {:else if currentView === 'ai-chat'}
 	<AiChatView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'downloads'}
+	<DownloadsView onBack={viewManager.showCommandPalette} />
+{:else if currentView === 'process-manager'}
+	<ProcessManager />
+{:else if currentView === 'quick-kill'}
+	<QuickKill />
+{:else if currentView === 'quick-ai'}
+	<QuickAiView
+		prompt={quickAiPrompt}
+		selection={quickAiSelection}
+		onClose={viewManager.hideQuickAi}
+	/>
 {/if}
 
 {#if showLogViewer}

@@ -38,7 +38,7 @@
 						<Accordion.Trigger>Technical Details</Accordion.Trigger>
 						<Accordion.Content>
 							<ul class="list-disc space-y-2 pl-5 text-left text-xs">
-								{#each truncatedViolations as violation}
+								{#each truncatedViolations as violation (violation.commandName)}
 									<li>
 										<strong>{violation.commandTitle ?? violation.commandName}</strong>
 										{#if violation.commandTitle && violation.commandTitle !== violation.commandName}

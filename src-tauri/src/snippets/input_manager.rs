@@ -167,10 +167,10 @@ where
 
     if let Some(original) = original_content {
         if let Err(e) = clipboard.set_text(original) {
-            eprintln!("Failed to restore clipboard content: {}", e);
+            tracing::warn!(error = %e, "Failed to restore clipboard content");
         }
     } else if let Err(e) = clipboard.set_text("") {
-        eprintln!("Failed to clear clipboard: {}", e);
+        tracing::warn!(error = %e, "Failed to clear clipboard");
     }
 
     paste_result
@@ -214,7 +214,7 @@ impl InputManager for RdevInputManager {
                 _ => (),
             };
             if let Err(error) = rdev::listen(cb) {
-                eprintln!("rdev error: {:?}", error)
+                tracing::error!(?error, "rdev listener error");
             }
         });
         Ok(())
@@ -228,7 +228,7 @@ impl InputManager for RdevInputManager {
         let is_terminal = is_focused_window_terminal();
 
         with_clipboard_text(text, is_terminal, |is_terminal| {
-            let mut enigo = self.enigo.lock().unwrap();
+            let mut enigo = self.enigo.lock().expect("enigo mutex poisoned");
             enigo.key(EnigoKey::Control, enigo::Direction::Press)?;
             if is_terminal {
                 // Terminals use Ctrl+Shift+V for paste
@@ -244,7 +244,7 @@ impl InputManager for RdevInputManager {
     }
 
     fn inject_key_clicks(&self, key: EnigoKey, count: usize) -> Result<()> {
-        let mut enigo = self.enigo.lock().unwrap();
+        let mut enigo = self.enigo.lock().expect("enigo mutex poisoned");
         for _ in 0..count {
             enigo.key(key, enigo::Direction::Click)?;
         }
@@ -496,9 +496,10 @@ impl InputManager for EvdevInputManager {
                         }
                         Err(e) => {
                             if e.kind() != std::io::ErrorKind::WouldBlock {
-                                eprintln!(
-                                    "Error fetching evdev events for \"{}\": {}",
-                                    device_name, e
+                                tracing::error!(
+                                    device = %device_name,
+                                    error = %e,
+                                    "Error fetching evdev events"
                                 );
                                 break;
                             }
@@ -519,7 +520,10 @@ impl InputManager for EvdevInputManager {
         let is_terminal = is_focused_window_terminal();
 
         with_clipboard_text(text, is_terminal, |is_terminal| {
-            let mut device = self.virtual_device.lock().unwrap();
+            let mut device = self
+                .virtual_device
+                .lock()
+                .expect("virtual device mutex poisoned");
             let syn = evdev::InputEvent::new(
                 evdev::EventType::SYNCHRONIZATION.0,
                 evdev::SynchronizationCode::SYN_REPORT.0,
@@ -561,7 +565,10 @@ impl InputManager for EvdevInputManager {
 
     fn inject_key_clicks(&self, key: EnigoKey, count: usize) -> Result<()> {
         if let Some(keycode) = Self::enigo_to_evdev(key) {
-            let mut device = self.virtual_device.lock().unwrap();
+            let mut device = self
+                .virtual_device
+                .lock()
+                .expect("virtual device mutex poisoned");
             for _ in 0..count {
                 self.send_key_click(&mut *device, keycode)?;
             }

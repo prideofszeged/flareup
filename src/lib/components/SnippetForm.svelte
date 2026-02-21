@@ -223,7 +223,7 @@
 							aria-hidden="true"
 							class="pointer-events-none col-start-1 row-start-1 min-h-32 w-full rounded-md border-transparent bg-transparent px-3 py-2 font-mono text-sm break-words whitespace-pre-wrap"
 						>
-							{#each parsedContent as part}
+							{#each parsedContent as part, i (i)}
 								<span
 									class:text-blue-400={part.type === 'valid-bracket'}
 									class:text-red-400={part.type === 'invalid-bracket' ||
@@ -233,6 +233,7 @@
 									{part.text}
 								</span>
 							{/each}
+							<!-- eslint-disable-next-line no-irregular-whitespace -->
 							<span>​</span>
 						</div>
 						<Textarea

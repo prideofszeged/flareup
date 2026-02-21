@@ -2,7 +2,6 @@ use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use tar::Archive;
 
@@ -69,8 +68,14 @@ pub async fn download_substitute(
     let arch = get_arch_string();
     let url = substitute.download_url_template.replace("{arch}", arch);
 
-    // Download the archive
-    let response = reqwest::get(&url)
+    // Download the archive (30-second timeout)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+    let response = client
+        .get(&url)
+        .send()
         .await
         .map_err(|e| format!("Failed to download CLI substitute from {}: {}", url, e))?;
 
@@ -178,13 +183,13 @@ pub async fn substitute_macos_binaries(
                     }
 
                     substituted.push(binary_name.clone());
-                    eprintln!(
-                        "✅ Substituted macOS binary '{}' with Linux version",
-                        binary_name
+                    tracing::info!(
+                        binary = %binary_name,
+                        "Substituted macOS binary with Linux version"
                     );
                 }
                 Err(e) => {
-                    eprintln!("⚠️ Failed to substitute binary '{}': {}", binary_name, e);
+                    tracing::warn!(binary = %binary_name, error = %e, "Failed to substitute binary");
                 }
             }
         }

@@ -7,6 +7,8 @@ import { type PluginInfo } from '@flare/protocol';
 import type { App } from '$lib/apps.svelte';
 import type { Quicklink } from '$lib/quicklinks.svelte';
 import { focusManager } from '$lib/focus.svelte';
+import type { AiPreset } from '$lib/ai.svelte';
+import type { ScriptCommand } from '$lib/script-commands.svelte';
 
 const appsStore = vi.hoisted(() => ({
 	apps: [] as App[],
@@ -43,6 +45,20 @@ vi.mock('$lib/viewManager.svelte', () => ({
 	viewManager
 }));
 
+const aiStore = vi.hoisted(() => ({
+	presets: [] as AiPreset[]
+}));
+vi.mock('$lib/ai.svelte', () => ({
+	aiStore
+}));
+
+const scriptCommandsStore = vi.hoisted(() => ({
+	commands: [] as ScriptCommand[]
+}));
+vi.mock('$lib/script-commands.svelte', () => ({
+	scriptCommandsStore
+}));
+
 describe('CommandPalette.svelte', () => {
 	const onRunPlugin = vi.fn();
 	const user = userEvent.setup();
@@ -52,6 +68,7 @@ describe('CommandPalette.svelte', () => {
 			pluginPath: '/path/to/plugin1',
 			title: 'Mock Plugin 1',
 			pluginName: 'mock-plugin-1',
+			pluginSlug: 'mock-plugin-1',
 			pluginTitle: 'Mock Extension',
 			commandName: 'mock-command-1',
 			icon: 'mock-icon-16',
@@ -65,6 +82,7 @@ describe('CommandPalette.svelte', () => {
 			pluginPath: '/path/to/plugin2',
 			title: 'Mock Plugin 2',
 			pluginName: 'mock-plugin-2',
+			pluginSlug: 'mock-plugin-2',
 			pluginTitle: 'Another Extension',
 			commandName: 'mock-command-2',
 			icon: 'mock-icon-16',
@@ -204,7 +222,8 @@ describe('CommandPalette.svelte', () => {
 			await user.type(searchInput, '2+2');
 
 			expect(await screen.findByText('Calculator')).toBeInTheDocument();
-			expect(screen.getByText('2+2')).toBeInTheDocument();
+			const expressionElements = screen.getAllByText('2+2');
+			expect(expressionElements.length).toBeGreaterThan(0);
 			expect(screen.getByText('4')).toBeInTheDocument();
 		});
 

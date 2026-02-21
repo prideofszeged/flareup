@@ -75,6 +75,66 @@ impl IncompatibilityHeuristic for MacOSPathHeuristic {
     }
 }
 
+struct MacOSAPIHeuristic;
+impl IncompatibilityHeuristic for MacOSAPIHeuristic {
+    fn check(
+        &self,
+        command_name: &str,
+        command_title: &str,
+        file_content: &str,
+    ) -> Option<HeuristicViolation> {
+        let macos_apis = [
+            ("NSWorkspace", "macOS NSWorkspace API"),
+            ("NSApplication", "macOS NSApplication API"),
+            ("NSFileManager", "macOS NSFileManager API"),
+            ("com.apple.", "macOS-specific bundle identifier"),
+            ("tell app \"Finder\"", "macOS Finder AppleScript"),
+            ("tell application \"Finder\"", "macOS Finder AppleScript"),
+        ];
+
+        for (pattern, description) in macos_apis {
+            if file_content.contains(pattern) {
+                return Some(HeuristicViolation {
+                    command_name: command_name.to_string(),
+                    command_title: command_title.to_string(),
+                    reason: format!("Uses {}", description),
+                });
+            }
+        }
+        None
+    }
+}
+
+struct ShellCommandHeuristic;
+impl IncompatibilityHeuristic for ShellCommandHeuristic {
+    fn check(
+        &self,
+        command_name: &str,
+        command_title: &str,
+        file_content: &str,
+    ) -> Option<HeuristicViolation> {
+        let macos_commands = [
+            ("osascript", "macOS osascript command"),
+            ("open -a", "macOS application launcher"),
+            ("mdfind", "macOS Spotlight search"),
+            ("mdls", "macOS Spotlight metadata"),
+            ("defaults read", "macOS preferences system"),
+            ("defaults write", "macOS preferences system"),
+        ];
+
+        for (pattern, description) in macos_commands {
+            if file_content.contains(pattern) {
+                return Some(HeuristicViolation {
+                    command_name: command_name.to_string(),
+                    command_title: command_title.to_string(),
+                    reason: format!("Uses {}", description),
+                });
+            }
+        }
+        None
+    }
+}
+
 /// Magic bytes for detecting Mach-O binaries (macOS executables)
 /// - MH_MAGIC (32-bit): 0xFEEDFACE
 /// - MH_CIGAM (32-bit, byte-swapped): 0xCEFAEDFE
@@ -214,8 +274,12 @@ struct HeuristicResult {
 }
 
 fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<HeuristicResult, String> {
-    let heuristics: Vec<Box<dyn IncompatibilityHeuristic + Send + Sync>> =
-        vec![Box::new(AppleScriptHeuristic), Box::new(MacOSPathHeuristic)];
+    let heuristics: Vec<Box<dyn IncompatibilityHeuristic + Send + Sync>> = vec![
+        Box::new(AppleScriptHeuristic),
+        Box::new(MacOSPathHeuristic),
+        Box::new(MacOSAPIHeuristic),
+        Box::new(ShellCommandHeuristic),
+    ];
 
     let mut archive =
         ZipArchive::new(Cursor::new(archive_data.clone())).map_err(|e| e.to_string())?;
@@ -315,28 +379,74 @@ const COMPATIBILITY_FILE_NAME: &str = "compatibility.json";
 struct CompatibilityMetadata {
     #[serde(default)]
     warnings: Vec<HeuristicViolation>,
+    #[serde(default = "default_compatibility_score")]
+    compatibility_score: u8,
+}
+
+fn default_compatibility_score() -> u8 {
+    100
+}
+
+/// Calculate compatibility score (0-100) based on detected violations
+/// Higher score = better Linux compatibility
+fn calculate_compatibility_score(violations: &[HeuristicViolation]) -> u8 {
+    let mut score: i32 = 100;
+
+    for violation in violations {
+        // Deduct points based on severity of the issue
+        if violation.reason.contains("macOS-only binary") {
+            // Mach-O binaries are a major blocker
+            score -= 40;
+        } else if violation.reason.contains("macOS NSWorkspace API")
+            || violation.reason.contains("macOS NSApplication API")
+            || violation.reason.contains("macOS NSFileManager API")
+            || violation.reason.contains("macOS Finder AppleScript")
+        {
+            // macOS-specific APIs likely won't work
+            score -= 20;
+        } else if violation.reason.contains("AppleScript") {
+            // AppleScript is shimmed but has limitations
+            score -= 15;
+        } else if violation.reason.contains("macOS path") {
+            // Paths can be translated
+            score -= 10;
+        } else if violation.reason.contains("osascript")
+            || violation.reason.contains("mdfind")
+            || violation.reason.contains("mdls")
+            || violation.reason.contains("defaults")
+            || violation.reason.contains("open -a")
+        {
+            // Shell commands are platform-specific
+            score -= 5;
+        }
+    }
+
+    // Clamp to 0-100 range
+    score.max(0).min(100) as u8
 }
 
 fn save_compatibility_metadata(
     plugin_dir: &Path,
     warnings: &[HeuristicViolation],
 ) -> Result<(), String> {
+    let compatibility_score = calculate_compatibility_score(warnings);
     let metadata = CompatibilityMetadata {
         warnings: warnings.to_vec(),
+        compatibility_score,
     };
     let data = serde_json::to_string_pretty(&metadata).map_err(|e| e.to_string())?;
     fs::write(plugin_dir.join(COMPATIBILITY_FILE_NAME), data).map_err(|e| e.to_string())
 }
 
-fn load_compatibility_metadata(plugin_dir: &Path) -> Result<Vec<HeuristicViolation>, String> {
+fn load_compatibility_metadata(plugin_dir: &Path) -> Result<CompatibilityMetadata, String> {
     let path = plugin_dir.join(COMPATIBILITY_FILE_NAME);
     if !path.exists() {
-        return Ok(vec![]);
+        return Ok(CompatibilityMetadata::default());
     }
 
     let data = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let parsed: CompatibilityMetadata = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-    Ok(parsed.warnings)
+    Ok(parsed)
 }
 
 fn extract_archive(archive_data: &bytes::Bytes, target_dir: &Path) -> Result<(), String> {
@@ -457,6 +567,8 @@ pub struct PluginInfo {
     pub description: Option<String>,
     pub plugin_title: String,
     pub plugin_name: String,
+    /// The directory name (slug) used for installation/uninstallation
+    pub plugin_slug: String,
     pub command_name: String,
     pub plugin_path: String,
     pub icon: Option<String>,
@@ -466,6 +578,7 @@ pub struct PluginInfo {
     pub author: Option<Author>,
     pub owner: Option<String>,
     pub compatibility_warnings: Option<Vec<HeuristicViolation>>,
+    pub compatibility_score: Option<u8>,
 }
 
 pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, String> {
@@ -493,16 +606,17 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let package_json_path = plugin_dir.join("package.json");
 
         if !package_json_path.exists() {
-            eprintln!("Plugin {} has no package.json, skipping", plugin_dir_name);
+            tracing::warn!(plugin = %plugin_dir_name, "Plugin has no package.json, skipping");
             continue;
         }
 
         let package_json_content = match fs::read_to_string(&package_json_path) {
             Ok(content) => content,
             Err(e) => {
-                eprintln!(
-                    "Error reading package.json for plugin {}: {}",
-                    plugin_dir_name, e
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %e,
+                    "Error reading package.json for plugin"
                 );
                 continue;
             }
@@ -511,9 +625,10 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let package_json: PackageJson = match serde_json::from_str(&package_json_content) {
             Ok(json) => json,
             Err(e) => {
-                eprintln!(
-                    "Error parsing package.json for plugin {}: {}",
-                    plugin_dir_name, e
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %e,
+                    "Error parsing package.json for plugin"
                 );
                 continue;
             }
@@ -522,11 +637,12 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
         let compatibility_metadata = match load_compatibility_metadata(&plugin_dir) {
             Ok(data) => data,
             Err(err) => {
-                eprintln!(
-                    "Failed to load compatibility metadata for {}: {}",
-                    plugin_dir_name, err
+                tracing::warn!(
+                    plugin = %plugin_dir_name,
+                    error = %err,
+                    "Failed to load compatibility metadata"
                 );
-                vec![]
+                CompatibilityMetadata::default()
             }
         };
 
@@ -535,6 +651,7 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                 let command_file_path = plugin_dir.join(format!("{}.js", command.name));
                 if command_file_path.exists() {
                     let warnings: Vec<HeuristicViolation> = compatibility_metadata
+                        .warnings
                         .iter()
                         .filter(|warning| warning.command_name == command.name)
                         .cloned()
@@ -555,6 +672,7 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                             .name
                             .clone()
                             .unwrap_or_else(|| plugin_dir_name.clone()),
+                        plugin_slug: plugin_dir_name.clone(),
                         command_name: command.name.clone(),
                         plugin_path: command_file_path.to_string_lossy().to_string(),
                         icon: command.icon.or_else(|| package_json.icon.clone()),
@@ -568,19 +686,25 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
                         } else {
                             Some(warnings)
                         },
+                        compatibility_score: Some(compatibility_metadata.compatibility_score),
                     };
                     plugins.push(plugin_info);
                 } else {
-                    eprintln!(
-                        "Command file {} not found for command {}",
-                        command_file_path.display(),
-                        command.name
+                    tracing::warn!(
+                        command = %command.name,
+                        path = %command_file_path.display(),
+                        "Command file not found"
                     );
                 }
             }
         }
     }
 
+    tracing::info!(
+        count = plugins.len(),
+        plugins = ?plugins.iter().map(|p| &p.plugin_name).collect::<Vec<_>>(),
+        "Discovered plugins"
+    );
     Ok(plugins)
 }
 
@@ -613,14 +737,14 @@ pub async fn install_extension(
         {
             Ok(substituted) => {
                 if !substituted.is_empty() {
-                    eprintln!(
-                        "✅ Successfully substituted {} macOS binaries with Linux versions",
-                        substituted.len()
+                    tracing::info!(
+                        count = substituted.len(),
+                        "Successfully substituted macOS binaries with Linux versions"
                     );
                 }
             }
             Err(e) => {
-                eprintln!("⚠️ Failed to substitute some binaries: {}", e);
+                tracing::warn!(error = %e, "Failed to substitute some binaries");
             }
         }
     }
@@ -628,4 +752,96 @@ pub async fn install_extension(
     save_compatibility_metadata(&extension_dir, &heuristic_result.violations)?;
 
     Ok(InstallResult::Success)
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CompatibilityInfo {
+    pub slug: String,
+    pub compatibility_score: u8,
+    pub warnings: Vec<HeuristicViolation>,
+}
+
+#[tauri::command]
+pub fn get_extension_compatibility(
+    app: tauri::AppHandle,
+    slug: String,
+) -> Result<CompatibilityInfo, String> {
+    if slug.is_empty() || slug.contains("..") || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid extension slug".to_string());
+    }
+    let extension_dir = get_extension_dir(&app, &slug)?;
+    let metadata = load_compatibility_metadata(&extension_dir)?;
+
+    Ok(CompatibilityInfo {
+        slug,
+        compatibility_score: metadata.compatibility_score,
+        warnings: metadata.warnings,
+    })
+}
+
+#[tauri::command]
+pub fn get_all_extensions_compatibility(
+    app: tauri::AppHandle,
+) -> Result<Vec<CompatibilityInfo>, String> {
+    let plugins_base_dir = get_extension_dir(&app, "")?;
+    let mut results = Vec::new();
+
+    if !plugins_base_dir.exists() {
+        return Ok(results);
+    }
+
+    let plugin_dirs = fs::read_dir(plugins_base_dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir());
+
+    for plugin_dir_entry in plugin_dirs {
+        let plugin_dir = plugin_dir_entry.path();
+        let slug = plugin_dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+
+        if let Ok(metadata) = load_compatibility_metadata(&plugin_dir) {
+            results.push(CompatibilityInfo {
+                slug,
+                compatibility_score: metadata.compatibility_score,
+                warnings: metadata.warnings,
+            });
+        }
+    }
+
+    Ok(results)
+}
+
+#[tauri::command]
+pub fn uninstall_extension(app: tauri::AppHandle, slug: String) -> Result<(), String> {
+    // Reject slugs with path traversal components
+    if slug.is_empty() || slug.contains("..") || slug.contains('/') || slug.contains('\\') {
+        return Err("Invalid extension slug".to_string());
+    }
+
+    let extension_dir = get_extension_dir(&app, &slug)?;
+
+    // Verify resolved path is inside the plugins directory
+    let plugins_dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "Failed to get app local data dir".to_string())?
+        .join("plugins");
+    if !extension_dir.starts_with(&plugins_dir) {
+        return Err("Invalid extension path".to_string());
+    }
+
+    if !extension_dir.exists() {
+        return Err(format!("Extension '{}' is not installed", slug));
+    }
+
+    fs::remove_dir_all(&extension_dir)
+        .map_err(|e| format!("Failed to uninstall extension: {}", e))?;
+
+    tracing::info!(slug = %slug, "Extension uninstalled successfully");
+    Ok(())
 }

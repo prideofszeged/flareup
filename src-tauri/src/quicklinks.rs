@@ -71,7 +71,7 @@ impl QuicklinkManager {
         Ok(self.store.last_insert_rowid())
     }
 
-    fn list_quicklinks(&self) -> Result<Vec<Quicklink>, AppError> {
+    pub fn list_quicklinks(&self) -> Result<Vec<Quicklink>, AppError> {
         self.store.query(
             "SELECT id, name, link, application, icon, created_at, updated_at FROM quicklinks ORDER BY name ASC",
             [],

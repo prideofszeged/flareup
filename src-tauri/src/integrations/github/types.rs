@@ -24,6 +24,7 @@ pub enum IssueState {
 }
 
 impl IssueState {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &str {
         match self {
             IssueState::Open => "open",
@@ -49,12 +50,14 @@ pub struct Issue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(dead_code)]
 pub enum PullState {
     Open,
     Closed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Branch {
     pub label: String,
     #[serde(rename = "ref")]
@@ -63,6 +66,7 @@ pub struct Branch {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct PullRequest {
     pub id: u64,
     pub number: u64,
@@ -91,6 +95,7 @@ pub struct Repository {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct NotificationSubject {
     pub title: String,
     #[serde(rename = "type")]
@@ -99,6 +104,7 @@ pub struct NotificationSubject {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Notification {
     pub id: String,
     pub subject: NotificationSubject,

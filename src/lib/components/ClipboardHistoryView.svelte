@@ -118,8 +118,18 @@
 		tick().then(loadMoreItems);
 	};
 
-	const formatDateTime = (dateString: string) =>
-		`Today at ${new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+	const formatDateTime = (dateString: string) => {
+		const date = new Date(dateString);
+		const today = new Date();
+		const isToday =
+			date.getFullYear() === today.getFullYear() &&
+			date.getMonth() === today.getMonth() &&
+			date.getDate() === today.getDate();
+		const timePart = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+		return isToday
+			? `Today at ${timePart}`
+			: date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ` at ${timePart}`;
+	};
 
 	const handleCopy = async (item: ClipboardItem) => {
 		const content =
@@ -160,8 +170,9 @@
 	});
 
 	$effect(() => {
-		[searchText, filter];
-		if (isInitialMount) return;
+		// Track dependencies for reset
+		void [searchText, filter];
+		if (untrack(() => isInitialMount)) return;
 
 		untrack(() => {
 			resetAndFetch();
@@ -320,7 +331,7 @@
 										{/snippet}
 									</VList>
 								</div>
-							{:else if selectedItem.contentType === 'text'}
+							{:else if selectedItem.contentType === 'text' || selectedItem.contentType === 'link'}
 								<div class="rounded bg-black/10 p-4 font-mono text-sm whitespace-pre-wrap">
 									{selectedItemContent}
 								</div>

@@ -20,11 +20,13 @@
 	bind:value
 	{...rest}
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && value) {
+		// Call parent handler first to allow it to prevent default
+		rest.onkeydown?.(e);
+
+		// Only handle Escape if not already handled
+		if (!e.defaultPrevented && e.key === 'Escape' && value) {
 			e.preventDefault();
 			value = '';
 		}
-
-		rest.onkeydown?.(e);
 	}}
 />

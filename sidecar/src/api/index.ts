@@ -10,6 +10,7 @@ import { Grid } from './components/grid';
 import { Form } from './components/form';
 import { Action, ActionPanel } from './components/actions';
 import { Detail } from './components/detail';
+import { MenuBarExtra } from './components/menubar';
 import {
 	environment,
 	getSelectedFinderItems,
@@ -63,6 +64,7 @@ export const getRaycastApi = () => {
 		Form,
 		Grid,
 		List,
+		MenuBarExtra,
 		Clipboard,
 		environment,
 		getApplications,
@@ -89,6 +91,13 @@ export const getRaycastApi = () => {
 				payload: {}
 			});
 		},
+		updateCommandMetadata: async (metadata: { subtitle?: string; tooltip?: string }) => {
+			// For no-view commands, this updates the command's metadata
+			// We'll just log it for now - in the future could store in preferences
+			console.log('updateCommandMetadata called with:', metadata);
+			// No-op for now since we don't have a persistent command list UI
+			return Promise.resolve();
+		},
 		popToRoot: async () => {
 			// Navigate back to plugin list - extensions handle this themselves
 			// by completing execution which triggers go-back-to-plugin-list
@@ -98,8 +107,44 @@ export const getRaycastApi = () => {
 			key: string,
 			initialValue: T
 		): [T, React.Dispatch<React.SetStateAction<T>>, boolean] => {
-			const [state, setState] = React.useState(initialValue);
-			return [state, setState, false];
+			const [state, setState] = React.useState<T>(initialValue);
+			const [isLoading, setIsLoading] = React.useState(true);
+
+			// Load persisted value on mount
+			React.useEffect(() => {
+				LocalStorage.getItem(key)
+					.then((stored) => {
+						if (stored !== undefined) {
+							try {
+								setState(JSON.parse(stored));
+							} catch (e) {
+								console.error(`Failed to parse persisted state for key "${key}":`, e);
+							}
+						}
+					})
+					.catch((e) => {
+						console.error(`Failed to load persisted state for key "${key}":`, e);
+					})
+					.finally(() => {
+						setIsLoading(false);
+					});
+			}, [key]);
+
+			// Wrapper that persists to LocalStorage on every state change
+			const setPersistentState = React.useCallback(
+				(value: React.SetStateAction<T>) => {
+					setState((prev) => {
+						const nextValue = typeof value === 'function' ? (value as (prev: T) => T)(prev) : value;
+						LocalStorage.setItem(key, JSON.stringify(nextValue)).catch((e) => {
+							console.error(`Failed to persist state for key "${key}":`, e);
+						});
+						return nextValue;
+					});
+				},
+				[key]
+			);
+
+			return [state, setPersistentState, isLoading];
 		},
 		BrowserExtension: BrowserExtensionAPI,
 		Keyboard

@@ -1,4 +1,5 @@
 <script lang="ts">
+	/* eslint-disable @typescript-eslint/no-unused-vars -- Props match common node interface */
 	import type { UINode } from '$lib/types';
 
 	type Props = {
@@ -7,7 +8,7 @@
 		onDispatch: (instanceId: number, handlerName: string, args: unknown[]) => void;
 	};
 
-	let {}: Props = $props();
+	let { nodeId, uiTree, onDispatch }: Props = $props();
 </script>
 
 <hr class="border-gray-200 dark:border-gray-700" />
