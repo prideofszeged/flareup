@@ -146,6 +146,7 @@ impl ScriptCommandManager {
         let mut authors = None;
         let mut description = None;
         let mut needs_confirmation = false;
+        let mut refresh_time: Option<String> = None;
         let mut arguments = Vec::new();
 
         let re_kv = Regex::new(r"@raycast\.([a-zA-Z0-9]+)\s+(.+)").unwrap();
@@ -170,6 +171,7 @@ impl ScriptCommandManager {
                     "author" | "authors" => authors = Some(value.to_string()),
                     "description" => description = Some(value.to_string()),
                     "needsConfirmation" => needs_confirmation = value == "true",
+                    "refreshTime" => refresh_time = Some(value.to_string()),
                     _ => {
                         if key.starts_with("argument") {
                             // Handled by specific regex below, but this block catches others
@@ -182,13 +184,14 @@ impl ScriptCommandManager {
                 // let _index = caps.get(1)?.as_str(); // We just push in order for now
                 let json_str = caps.get(2)?.as_str();
                 if let Ok(arg_val) = serde_json::from_str::<serde_json::Value>(json_str) {
-                    let name = arg_val.get("placeholder").and_then(|v| v.as_str()).unwrap_or("Argument").to_string();
+                    let name = arg_val.get("name").and_then(|v| v.as_str()).unwrap_or("Argument").to_string();
+                    let placeholder = arg_val.get("placeholder").and_then(|v| v.as_str()).map(|s| s.to_string());
                     let optional = arg_val.get("optional").and_then(|v| v.as_bool()).unwrap_or(false);
                     let percent_encoded = arg_val.get("percentEncoded").and_then(|v| v.as_bool()).unwrap_or(false);
 
                     arguments.push(ScriptArgument {
-                        name: name.clone(),
-                        placeholder: Some(name), // Use name as placeholder for now
+                        name,
+                        placeholder,
                         optional,
                         percent_encoded,
                     });
@@ -212,7 +215,7 @@ impl ScriptCommandManager {
             description,
             arguments,
             needs_confirmation,
-            refresh_time: None,
+            refresh_time,
         })
     }
 

@@ -621,7 +621,7 @@
 								>
 									{#if message.role === 'assistant'}
 										<div class="prose prose-sm prose-invert max-w-none">
-											<SvelteMarked source={message.content} />
+											<SvelteMarked source={message.content.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<(iframe|object|embed|form|input|link|meta|style)[^>]*>/gi, '')} />
 										</div>
 									{:else}
 										{message.content}

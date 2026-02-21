@@ -771,6 +771,9 @@ pub fn get_extension_compatibility(
         return Err("Invalid extension slug".to_string());
     }
     let extension_dir = get_extension_dir(&app, &slug)?;
+    if !extension_dir.exists() {
+        return Err(format!("Extension '{}' is not installed", slug));
+    }
     let metadata = load_compatibility_metadata(&extension_dir)?;
 
     Ok(CompatibilityInfo {
