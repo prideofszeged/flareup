@@ -58,6 +58,7 @@ pub struct ScriptCommandManager {
 }
 
 impl ScriptCommandManager {
+    /// Creates a new ScriptCommandManager with file watching for the scripts directory
     pub fn new(app_handle: &AppHandle) -> Self {
         let data_dir = app_handle
             .path()
@@ -102,10 +103,12 @@ impl ScriptCommandManager {
         final_manager
     }
 
+    /// Scans the scripts directory for executable files with Raycast metadata
     fn scan_directory(&self) {
         Self::scan_directory_static(&self.scripts_dir, &self.scripts);
     }
 
+    /// Static method to scan directory and update scripts store, used by both initial scan and watcher
     fn scan_directory_static(dir: &Path, scripts_store: &Arc<Mutex<HashMap<String, ScriptCommand>>>) {
         let mut new_scripts = HashMap::new();
 
@@ -129,6 +132,7 @@ impl ScriptCommandManager {
         *store = new_scripts;
     }
 
+    /// Parses Raycast script metadata from comment annotations in the script file
     fn parse_script(path: &Path) -> Option<ScriptCommand> {
         let content = fs::read_to_string(path).ok()?;
 
@@ -219,17 +223,20 @@ impl ScriptCommandManager {
         })
     }
 
+    /// Returns all discovered script commands
     pub fn get_scripts(&self) -> Vec<ScriptCommand> {
         let store = self.scripts.lock().unwrap_or_else(|e| e.into_inner());
         store.values().cloned().collect()
     }
 }
 
+/// Retrieves all available script commands from the scripts directory
 #[tauri::command]
 pub fn get_script_commands(manager: State<ScriptCommandManager>) -> Vec<ScriptCommand> {
     manager.get_scripts()
 }
 
+/// Executes a script command with the provided arguments after validating the path
 #[tauri::command]
 pub fn run_script_command(app: AppHandle, command_path: String, args: Vec<String>) -> Result<String, String> {
     // Validate that the command path is inside the scripts directory
@@ -257,6 +264,7 @@ pub fn run_script_command(app: AppHandle, command_path: String, args: Vec<String
     }
 }
 
+/// Opens the scripts directory in the system file manager
 #[tauri::command]
 pub fn open_scripts_folder(app: AppHandle) -> Result<(), String> {
     let data_dir = app
