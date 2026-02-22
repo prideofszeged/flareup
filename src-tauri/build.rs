@@ -12,7 +12,12 @@ fn main() {
 
     println!("cargo:rustc-link-lib=SoulverWrapper");
 
+    // Deployed/bundled app rpath
     println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../lib/raycast-linux/SoulverWrapper/.build/release");
+
+    // Dev-time rpath: from target/{debug,release}/ back to source tree
+    println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../../SoulverWrapper/.build/release");
+    println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../../SoulverWrapper/Vendor/SoulverCore-linux");
 
     tauri_build::build();
 }
