@@ -36,6 +36,7 @@ check-deps:
     command -v swift &>/dev/null || missing+=("swift")
     command -v cargo &>/dev/null || missing+=("cargo (rustup)")
     command -v jq &>/dev/null || missing+=("jq")
+    command -v patchelf &>/dev/null || missing+=("patchelf")
     
     if [ ${#missing[@]} -ne 0 ]; then
         echo "❌ Missing dependencies:"
@@ -208,7 +209,7 @@ build-deb: check-deps sidecar swift
     echo "DEB package: {{deb_dir}}/flare_{{version}}_amd64.deb"
     echo ""
     echo "To install:"
-    echo "  sudo dpkg -i {{deb_dir}}/flare_{{version}}_amd64.deb"
+    echo "  sudo apt install -y {{deb_dir}}/flare_{{version}}_amd64.deb"
 
 # Build RPM package only
 [group('build')]
@@ -305,7 +306,7 @@ install: build
     echo "✅ Installation complete!"
     echo "Installed to: {{local_bin}}/flare.AppImage"
 
-# Build DEB and install via dpkg
+# Build DEB and install via apt (resolves dependencies)
 [group('run')]
 install-deb: build-deb
     #!/usr/bin/env bash
@@ -316,8 +317,8 @@ install-deb: build-deb
         exit 1
     fi
     echo "📦 Installing $DEB..."
-    sudo dpkg -i "$DEB"
-    echo "✅ Installed via dpkg"
+    sudo apt install -y "$DEB"
+    echo "✅ Installed via apt"
 
 # Run the installed AppImage
 [group('run')]
@@ -473,7 +474,8 @@ bump-patch:
     # tauri.conf.json
     jq --arg v "$NEW" '.version = $v' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
     # Cargo.toml (first [package] version field only)
-    sed -i "0,/^version = \"$OLD\"/s/^version = \"$OLD\"/version = \"$NEW\"/" src-tauri/Cargo.toml
+    OLD_ESCAPED=$(printf '%s' "$OLD" | sed 's/[][\\/.*^$+?{}|()]/\\&/g')
+    sed -i "0,/^version = \"$OLD_ESCAPED\"/s/^version = \"$OLD_ESCAPED\"/version = \"$NEW\"/" src-tauri/Cargo.toml
     echo "✅ Version bumped to $NEW"
 
 # Show build configuration

@@ -11,3 +11,7 @@ vite.config.ts.timestamp-*
 
 # Chunkhound
 .chunkhound*
+
+# Local machine artifacts
+logs/
+pre-migration-audit-*.md
