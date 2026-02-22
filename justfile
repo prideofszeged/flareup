@@ -305,6 +305,20 @@ install: build
     echo "✅ Installation complete!"
     echo "Installed to: {{local_bin}}/flare.AppImage"
 
+# Build DEB and install via dpkg
+[group('run')]
+install-deb: build-deb
+    #!/usr/bin/env bash
+    set -e
+    DEB=$(find {{deb_dir}} -name "*.deb" -type f 2>/dev/null | head -1)
+    if [ -z "$DEB" ]; then
+        echo "❌ No .deb found. Build may have failed."
+        exit 1
+    fi
+    echo "📦 Installing $DEB..."
+    sudo dpkg -i "$DEB"
+    echo "✅ Installed via dpkg"
+
 # Run the installed AppImage
 [group('run')]
 run:
@@ -444,6 +458,23 @@ clean:
     rm -rf src-tauri/SoulverWrapper/.build
     
     echo "✅ Clean complete"
+
+# Bump patch version across package.json, tauri.conf.json, and Cargo.toml
+[group('util')]
+bump-patch:
+    #!/usr/bin/env bash
+    set -e
+    OLD=$(jq -r .version package.json)
+    IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD"
+    NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+    echo "Bumping $OLD → $NEW"
+    # package.json
+    jq --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+    # tauri.conf.json
+    jq --arg v "$NEW" '.version = $v' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+    # Cargo.toml (first [package] version field only)
+    sed -i "0,/^version = \"$OLD\"/s/^version = \"$OLD\"/version = \"$NEW\"/" src-tauri/Cargo.toml
+    echo "✅ Version bumped to $NEW"
 
 # Show build configuration
 [group('util')]
