@@ -1,6 +1,16 @@
 use std::process::Command;
 
 fn main() {
+    // Ensure the Swift wrapper can find SoulverCore when installed via deb:
+    // libSoulverWrapper.so lives in .../SoulverWrapper/.build/release
+    // and SoulverCore is in .../SoulverWrapper/Vendor/SoulverCore-linux.
+    let _ = Command::new("patchelf")
+        .arg("--set-rpath")
+        .arg("/opt/swift/usr/lib/swift/linux:$ORIGIN:$ORIGIN/../../Vendor/SoulverCore-linux")
+        .arg("SoulverWrapper/.build/release/libSoulverWrapper.so")
+        .status()
+        .expect("Failed to patch elf for libSoulverWrapper");
+
     let _ = Command::new("patchelf")
         .arg("--set-rpath")
         .arg("$ORIGIN")

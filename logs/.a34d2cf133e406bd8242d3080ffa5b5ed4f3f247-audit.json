@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/mnt/nvme/scratch/flareup/logs/.a34d2cf133e406bd8242d3080ffa5b5ed4f3f247-audit.json",
+    "files": [
+        {
+            "date": 1771711459698,
+            "name": "/mnt/nvme/scratch/flareup/logs/mcp-puppeteer-2026-02-21.log",
+            "hash": "99c1fe9b5e0a5b32ac4049ab8054bdfe1ed3377a25cd4e9c7a5ad19df9682931"
+        },
+        {
+            "date": 1771763750300,
+            "name": "/mnt/nvme/scratch/flareup/logs/mcp-puppeteer-2026-02-22.log",
+            "hash": "8573ea8debe5955e0cb28a5f153bc8d61cb27dd52cf16c5591a1ea13f56d5b3c"
+        }
+    ],
+    "hashType": "sha256"
+}
