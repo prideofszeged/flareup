@@ -310,9 +310,9 @@ install: build
 install-deb: build-deb
     #!/usr/bin/env bash
     set -e
-    DEB=$(find {{deb_dir}} -name "*.deb" -type f 2>/dev/null | head -1)
-    if [ -z "$DEB" ]; then
-        echo "❌ No .deb found. Build may have failed."
+    DEB="{{deb_dir}}/flare_{{version}}_amd64.deb"
+    if [ ! -f "$DEB" ]; then
+        echo "❌ No .deb found at $DEB"
         exit 1
     fi
     echo "📦 Installing $DEB..."

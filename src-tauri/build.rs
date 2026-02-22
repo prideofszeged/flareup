@@ -12,8 +12,8 @@ fn main() {
 
     println!("cargo:rustc-link-lib=SoulverWrapper");
 
-    // Deployed/bundled app rpath
-    println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../lib/raycast-linux/SoulverWrapper/.build/release");
+    // Deployed/bundled app rpath (deb installs libs to /usr/lib/flare/...)
+    println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../lib/flare/SoulverWrapper/.build/release");
 
     // Dev-time rpath: from target/{debug,release}/ back to source tree
     println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN/../../SoulverWrapper/.build/release");
