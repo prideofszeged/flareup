@@ -256,7 +256,6 @@
 				type="text"
 				placeholder="Search processes by name, command, or PID..."
 				bind:value={searchQuery}
-				autofocus
 			/>
 		</div>
 	{/if}
@@ -371,14 +370,28 @@
 </div>
 
 {#if showKillPortModal}
-	<div class="modal-overlay" onclick={() => (showKillPortModal = false)}>
-		<div class="modal" onclick={(e) => e.stopPropagation()}>
+	<div
+		class="modal-overlay"
+		role="button"
+		tabindex="0"
+		onclick={(e) => {
+			if (e.currentTarget === e.target) {
+				showKillPortModal = false;
+			}
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				showKillPortModal = false;
+			}
+		}}
+	>
+		<div class="modal" role="dialog" aria-modal="true" tabindex="-1">
 			<h2>Kill Process on Port</h2>
 			<input
 				type="number"
 				placeholder="Enter port number (e.g., 3000)"
 				bind:value={killPortInput}
-				autofocus
 				onkeydown={(e) => e.key === 'Enter' && handleQuickKillPort()}
 			/>
 			<div class="modal-actions">

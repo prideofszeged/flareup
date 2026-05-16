@@ -42,6 +42,8 @@
 	let currentPage = $state(0);
 	let hasMore = $state(true);
 	let isFetching = $state(false);
+	let queryVersion = $state(0);
+	let pendingReset = $state(false);
 
 	const PAGE_SIZE = 50;
 
@@ -116,33 +118,47 @@
 		});
 	};
 
-	const loadMoreItems = async () => {
+	const loadMoreItems = async (expectedVersion: number = queryVersion) => {
 		if (isFetching || !hasMore) return;
 		isFetching = true;
+		const offset = currentPage * PAGE_SIZE;
 		try {
 			const newItems = await invoke<DownloadItem[]>('downloads_get_items', {
 				filter,
+				sortBy,
 				limit: PAGE_SIZE,
-				offset: currentPage * PAGE_SIZE,
+				offset,
 				searchTerm: searchText || null
 			});
+			if (expectedVersion !== queryVersion) {
+				return;
+			}
 			if (newItems.length < PAGE_SIZE) hasMore = false;
-			allItems = currentPage === 0 ? newItems : [...allItems, ...newItems];
+			allItems = offset === 0 ? newItems : [...allItems, ...newItems];
 			currentPage += 1;
 		} catch (e) {
 			console.error('Failed to fetch downloads:', e);
 		} finally {
 			isFetching = false;
+			if (pendingReset) {
+				pendingReset = false;
+				resetAndFetch();
+			}
 		}
 	};
 
 	const resetAndFetch = () => {
+		queryVersion += 1;
 		allItems = [];
 		currentPage = 0;
 		hasMore = true;
-		if (isFetching) return;
+		if (isFetching) {
+			pendingReset = true;
+			return;
+		}
 		selectedIndex = 0;
-		tick().then(loadMoreItems);
+		const currentVersion = queryVersion;
+		tick().then(() => loadMoreItems(currentVersion));
 	};
 
 	const handleOpen = async (item: DownloadItem) => {

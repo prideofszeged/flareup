@@ -626,8 +626,12 @@ pub fn run() {
             if args.len() > 1 && args[1].starts_with("raycast://") {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.emit("deep-link", args[1].to_string());
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
+                    if let Err(e) = window.show() {
+                        tracing::error!(error = %e, "Failed to show main window for deep link");
+                    }
+                    if let Err(e) = window.set_focus() {
+                        tracing::error!(error = %e, "Failed to focus main window for deep link");
+                    }
                 }
                 return;
             }
@@ -877,22 +881,29 @@ pub fn run() {
             }
             setup_input_listener(app.handle());
 
-            let soulver_core_path = app
-                .path()
-                .resource_dir()
-                .unwrap()
-                .join("SoulverWrapper/Vendor/SoulverCore-linux");
-
-            soulver::initialize(soulver_core_path.to_str().unwrap());
+            match app.path().resource_dir() {
+                Ok(resource_dir) => {
+                    let soulver_core_path = resource_dir.join("SoulverWrapper/Vendor/SoulverCore-linux");
+                    let soulver_core_path_str = soulver_core_path.to_string_lossy().to_string();
+                    soulver::initialize(&soulver_core_path_str);
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to resolve resource directory for Soulver");
+                }
+            }
 
             let quit_i = MenuItem::with_id(app.handle(), "quit", "Quit", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app.handle(), "show", "Show Flare", true, None::<&str>)?;
             let menu = Menu::with_items(app.handle(), &[&show_i, &quit_i])?;
 
-            let _tray = TrayIconBuilder::new()
-                .menu(&menu)
-                .show_menu_on_left_click(false)
-                .icon(app.default_window_icon().unwrap().clone())
+            let mut tray_builder = TrayIconBuilder::new().menu(&menu).show_menu_on_left_click(false);
+            if let Some(icon) = app.default_window_icon() {
+                tray_builder = tray_builder.icon(icon.clone());
+            } else {
+                tracing::warn!("Default window icon is missing; tray icon will use platform default");
+            }
+
+            let _tray = tray_builder
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
                         app.exit(0);
@@ -922,8 +933,15 @@ pub fn run() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
-        .unwrap();
+        .build(tauri::generate_context!());
+
+    let app = match app {
+        Ok(app) => app,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to build Tauri application");
+            return;
+        }
+    };
 
     app.run(|app, event| {
         if let tauri::RunEvent::WindowEvent { label, event, .. } = event {

@@ -25,6 +25,7 @@ export class ExtensionsStore {
 	readonly perPage = 50;
 	#searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 	#loadingDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+	#searchRequestId = 0;
 
 	allCategories = $derived.by(() => {
 		const categories = new Set<string>();
@@ -49,6 +50,7 @@ export class ExtensionsStore {
 
 	set searchText(value: string) {
 		this.#_searchText = value;
+		const requestId = ++this.#searchRequestId;
 		clearTimeout(this.#searchDebounceTimer);
 		clearTimeout(this.#loadingDebounceTimer);
 
@@ -77,15 +79,21 @@ export class ExtensionsStore {
 				);
 				if (!res.ok) throw new Error(`Search failed: ${res.status}`);
 				const parsed = PaginatedExtensionsResponseSchema.parse(await res.json());
+				if (requestId !== this.#searchRequestId || value !== this.#_searchText) {
+					return;
+				}
 				this.searchResults = parsed.data;
 				this.selectedIndex = 0;
 			} catch (e: unknown) {
+				if (requestId !== this.#searchRequestId) {
+					return;
+				}
 				this.error = e instanceof Error ? e.message : 'Unknown error';
 				console.error(e);
 				this.searchResults = [];
 			} finally {
 				clearTimeout(this.#loadingDebounceTimer);
-				if (value === this.#_searchText) {
+				if (requestId === this.#searchRequestId && value === this.#_searchText) {
 					this.isLoading = false;
 					this.isSearching = false;
 				}

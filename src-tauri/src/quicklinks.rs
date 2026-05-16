@@ -62,6 +62,7 @@ impl QuicklinkManager {
         application: Option<String>,
         icon: Option<String>,
     ) -> Result<i64, AppError> {
+        validate_quicklink_input(&name, &link)?;
         let now = Utc::now().timestamp();
         self.store.execute(
             "INSERT INTO quicklinks (name, link, application, icon, created_at, updated_at)
@@ -86,6 +87,7 @@ impl QuicklinkManager {
         application: Option<String>,
         icon: Option<String>,
     ) -> Result<(), AppError> {
+        validate_quicklink_input(&name, &link)?;
         let now = Utc::now().timestamp();
         self.store.execute(
             "UPDATE quicklinks SET name = ?, link = ?, application = ?, icon = ?, updated_at = ?
@@ -100,6 +102,16 @@ impl QuicklinkManager {
             .execute("DELETE FROM quicklinks WHERE id = ?", params![id])?;
         Ok(())
     }
+}
+
+fn validate_quicklink_input(name: &str, link: &str) -> Result<(), AppError> {
+    if name.trim().is_empty() {
+        return Err(AppError::Validation("Name cannot be empty".to_string()));
+    }
+    if link.trim().is_empty() {
+        return Err(AppError::Validation("Link cannot be empty".to_string()));
+    }
+    Ok(())
 }
 
 #[tauri::command]

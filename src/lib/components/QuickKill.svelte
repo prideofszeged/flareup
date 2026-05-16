@@ -100,7 +100,7 @@
 	</header>
 
 	<div class="search-bar">
-		<input type="text" placeholder="Search applications..." bind:value={searchQuery} autofocus />
+		<input type="text" placeholder="Search applications..." bind:value={searchQuery} />
 	</div>
 
 	{#if error}
@@ -112,12 +112,20 @@
 	{:else if filteredWindows.length === 0}
 		<div class="empty">No applications found</div>
 	{:else}
-		<ul class="window-list">
+		<div class="window-list" role="list">
 			{#each filteredWindows as window, idx}
-				<li
+				<div
 					class="window-item"
 					class:selected={idx === selectedIndex}
+					role="button"
+					tabindex="0"
 					onclick={() => killWindow(window)}
+					onkeydown={(event) => {
+						if (event.key === 'Enter' || event.key === ' ') {
+							event.preventDefault();
+							killWindow(window);
+						}
+					}}
 				>
 					<div class="window-info">
 						<span class="window-title">{window.title}</span>
@@ -147,9 +155,9 @@
 							Force
 						</button>
 					</div>
-				</li>
+				</div>
 			{/each}
-		</ul>
+		</div>
 	{/if}
 
 	<footer class="footer">
