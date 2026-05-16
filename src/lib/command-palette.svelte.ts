@@ -40,13 +40,15 @@ type UseCommandPaletteItemsArgs = {
 	selectedQuicklinkForArgument: () => Quicklink | null;
 };
 
-let cachedAiCommands: AiCommand[] = [];
-let aiCommandsLoaded = false;
+let cachedAiCommands = $state<AiCommand[]>([]);
+let aiCommandsLoaded = $state(false);
+let aiCommandsRefreshKey = $state(0);
 
 async function loadAiCommands(): Promise<AiCommand[]> {
 	if (aiCommandsLoaded) return cachedAiCommands;
 	try {
-		cachedAiCommands = await invoke<AiCommand[]>('list_ai_commands');
+		const commands = await invoke<AiCommand[]>('list_ai_commands');
+		cachedAiCommands = commands ?? [];
 		aiCommandsLoaded = true;
 	} catch (error) {
 		console.error('Failed to load AI commands:', error);
@@ -58,6 +60,8 @@ async function loadAiCommands(): Promise<AiCommand[]> {
 // Refresh AI commands cache
 export function refreshAiCommandsCache() {
 	aiCommandsLoaded = false;
+	cachedAiCommands = [];
+	aiCommandsRefreshKey += 1;
 }
 
 export function useCommandPaletteItems({
@@ -88,7 +92,8 @@ export function useCommandPaletteItems({
 
 	// Load AI commands on first render
 	$effect(() => {
-		loadAiCommands();
+		void aiCommandsRefreshKey;
+		void loadAiCommands();
 	});
 
 	const fuse = $derived(
@@ -164,17 +169,8 @@ export function useCommandPaletteItems({
 	const displayItems = $derived.by(() => {
 		let items: (UnifiedItem & { fuseScore?: number; alias?: string })[] = [];
 		const term = searchText();
-		const aliases = aliasesStore.aliases;
-
-		// Debug: log current aliases state (stringify to see actual content)
-		if (term.trim()) {
-			console.log(
-				'[CommandPalette] Searching with term:',
-				term,
-				'Available aliases:',
-				JSON.stringify(aliases)
-			);
-		}
+		const aliases =
+			aliasesStore.aliases && typeof aliasesStore.aliases === 'object' ? aliasesStore.aliases : {};
 
 		// Build reverse lookup: command_id -> alias
 		const commandToAlias = new Map<string, string>();
@@ -196,19 +192,9 @@ export function useCommandPaletteItems({
 				([alias]) => alias.toLowerCase() === termLower || alias.toLowerCase().startsWith(termLower)
 			);
 
-			console.log('[CommandPalette] Alias match for term:', termLower, '->', aliasMatch);
-
 			if (aliasMatch) {
 				const [matchedAlias, commandId] = aliasMatch;
-				// Find the item in allSearchableItems by command ID
-				console.log('[CommandPalette] Looking for item with ID:', commandId);
-				console.log(
-					'[CommandPalette] Available item IDs:',
-					allSearchableItems.map((i) => i.id).slice(0, 10),
-					'...'
-				);
 				const matchedItem = allSearchableItems.find((item) => item.id === commandId);
-				console.log('[CommandPalette] Matched item:', matchedItem);
 				if (matchedItem) {
 					// Remove if already in results (to avoid duplicates)
 					items = items.filter((item) => item.id !== commandId);
@@ -223,9 +209,6 @@ export function useCommandPaletteItems({
 			}
 		} else {
 			// No search term - show all items with their aliases
-			console.log('[CommandPalette] No search term. commandToAlias map:', [
-				...commandToAlias.entries()
-			]);
 			items = allSearchableItems.map((item) => ({
 				...item,
 				score: 0,
@@ -283,18 +266,7 @@ export function useCommandPaletteItems({
 			// Otherwise keep the existing (first seen)
 		}
 
-		const result = [...seenIds.values()];
-
-		// Debug: log items with aliases
-		const itemsWithAlias = result.filter((i) => i.alias);
-		if (itemsWithAlias.length > 0) {
-			console.log(
-				'[CommandPalette] Items with aliases:',
-				itemsWithAlias.map((i) => ({ id: i.id, alias: i.alias, type: i.type }))
-			);
-		}
-
-		return result;
+		return [...seenIds.values()];
 	});
 
 	return () => ({
@@ -347,7 +319,12 @@ export function useCommandPaletteActions({
 				if (item.data.exec) {
 					invoke('launch_app', { exec: item.data.exec }).catch(console.error);
 					// Hide window after launching app so the launched app can receive focus
-					await getCurrentWindow().hide();
+					try {
+						await getCurrentWindow().hide();
+					} catch (error) {
+						// Non-Tauri test/runtime environments won't have a native window.
+						console.error('Failed to hide current window:', error);
+					}
 				}
 				break;
 			}

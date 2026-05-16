@@ -131,7 +131,6 @@
 								type="text"
 								bind:value={editValue}
 								class="bg-background border-primary w-24 rounded border-2 px-2 py-1 font-mono text-sm focus:outline-none"
-								autofocus
 							/>
 							<button
 								class="hover:bg-primary/90 bg-primary rounded px-3 py-1.5 text-sm text-white transition-colors"

@@ -44,10 +44,21 @@ impl DownloadsManager {
                 file_type TEXT NOT NULL,
                 size_bytes INTEGER NOT NULL,
                 created_at TEXT NOT NULL,
+                modified_at TEXT,
                 accessed_at TEXT
             )",
             [],
         )?;
+
+        // Backward-compatible migration for existing databases.
+        let mut stmt = db.prepare("PRAGMA table_info(downloads)")?;
+        let columns: Vec<String> = stmt
+            .query_map([], |row| row.get(1))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if !columns.contains(&"modified_at".to_string()) {
+            db.execute("ALTER TABLE downloads ADD COLUMN modified_at TEXT", [])?;
+        }
 
         db.execute(
             "CREATE INDEX IF NOT EXISTS idx_downloads_created ON downloads(created_at DESC)",
@@ -98,17 +109,40 @@ impl DownloadsManager {
             .or_else(|_| metadata.modified())
             .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
             .unwrap_or_else(|_| Utc::now().to_rfc3339());
+        let modified_at = metadata
+            .modified()
+            .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
+            .unwrap_or_else(|_| created_at.clone());
 
         let path_str = path.to_string_lossy().to_string();
 
         let db = self.db.lock().expect("downloads db mutex poisoned");
         db.execute(
-            "INSERT OR REPLACE INTO downloads (path, name, extension, file_type, size_bytes, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![path_str, name, extension, file_type, size_bytes, created_at],
+            "INSERT INTO downloads (path, name, extension, file_type, size_bytes, created_at, modified_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(path) DO UPDATE SET
+                name = excluded.name,
+                extension = excluded.extension,
+                file_type = excluded.file_type,
+                size_bytes = excluded.size_bytes,
+                created_at = excluded.created_at,
+                modified_at = excluded.modified_at",
+            params![
+                path_str,
+                name,
+                extension,
+                file_type,
+                size_bytes,
+                created_at,
+                modified_at
+            ],
         )?;
 
-        let id = db.last_insert_rowid();
+        let id = db.query_row(
+            "SELECT id FROM downloads WHERE path = ?1",
+            params![path_str],
+            |row| row.get(0),
+        )?;
 
         Ok(Some(DownloadItem {
             id,
@@ -126,6 +160,7 @@ impl DownloadsManager {
     pub fn get_items(
         &self,
         filter: &str,
+        sort_by: &str,
         search_term: Option<&str>,
         limit: u32,
         offset: u32,
@@ -165,7 +200,13 @@ impl DownloadsManager {
             }
         }
 
-        sql.push_str(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        let order_by = match sort_by {
+            "name" => "name COLLATE NOCASE ASC",
+            "modified" => "COALESCE(modified_at, created_at) DESC",
+            _ => "created_at DESC",
+        };
+
+        sql.push_str(&format!(" ORDER BY {} LIMIT ? OFFSET ?", order_by));
         params_vec.push(Box::new(limit));
         params_vec.push(Box::new(offset));
 
@@ -192,12 +233,12 @@ impl DownloadsManager {
             .map_err(|e| e.into())
     }
 
-    pub fn mark_accessed(&self, id: i64) -> Result<(), AppError> {
+    pub fn mark_accessed_by_path(&self, path: &str) -> Result<(), AppError> {
         let db = self.db.lock().expect("downloads db mutex poisoned");
         let now = Utc::now().to_rfc3339();
         db.execute(
-            "UPDATE downloads SET accessed_at = ?1 WHERE id = ?2",
-            params![now, id],
+            "UPDATE downloads SET accessed_at = ?1 WHERE path = ?2",
+            params![now, path],
         )?;
         Ok(())
     }

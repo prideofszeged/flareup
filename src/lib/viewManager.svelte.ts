@@ -388,16 +388,16 @@ class ViewManager {
 							console.error('Command from deeplink not found:', url);
 						}
 					}
-				} else if (urlObj.host === 'snippets' && urlObj.pathname === '/import') {
-					const snippetParams = urlObj.searchParams.getAll('snippet');
-					const snippets = snippetParams
-						.map((param) => {
-							try {
-								return JSON.parse(decodeURIComponent(param));
-							} catch (e) {
-								console.error('Failed to parse snippet JSON:', e);
-								return null;
-							}
+					} else if (urlObj.host === 'snippets' && urlObj.pathname === '/import') {
+						const snippetParams = urlObj.searchParams.getAll('snippet');
+						const snippets = snippetParams
+							.map((param) => {
+								try {
+									return JSON.parse(param);
+								} catch (e) {
+									console.error('Failed to parse snippet JSON:', e);
+									return null;
+								}
 						})
 						.filter((s): s is object => s !== null);
 

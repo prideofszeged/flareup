@@ -47,56 +47,56 @@ fn should_exclude_path(path: &Path) -> bool {
 }
 
 async fn handle_event(app_handle: AppHandle, debounced_event: DebouncedEvent) {
-    let manager = app_handle.state::<FileSearchManager>();
-    let path = &debounced_event.event.paths[0];
+	let manager = app_handle.state::<FileSearchManager>();
+	for path in &debounced_event.event.paths {
+		// Skip excluded paths
+		if should_exclude_path(path) {
+			continue;
+		}
 
-    // Skip excluded paths
-    if should_exclude_path(path) {
-        return;
-    }
+		if path.exists() {
+			if let Ok(metadata) = path.metadata() {
+				let file_type = if metadata.is_dir() {
+					"directory".to_string()
+				} else {
+					"file".to_string()
+				};
+				let last_modified = metadata
+					.modified()
+					.unwrap_or(SystemTime::UNIX_EPOCH)
+					.duration_since(SystemTime::UNIX_EPOCH)
+					.unwrap_or_default()
+					.as_secs() as i64;
 
-    if path.exists() {
-        if let Ok(metadata) = path.metadata() {
-            let file_type = if metadata.is_dir() {
-                "directory".to_string()
-            } else {
-                "file".to_string()
-            };
-            let last_modified = metadata
-                .modified()
-                .unwrap_or(SystemTime::UNIX_EPOCH)
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            let indexed_file = IndexedFile {
-                path: path.to_string_lossy().to_string(),
-                name: path
-                    .file_name()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_default(),
-                parent_path: path
-                    .parent()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_default(),
-                file_type,
-                last_modified,
-            };
-            if let Err(e) = manager.add_file(&indexed_file) {
-                tracing::error!(
-                    error = ?e,
-                    path = %path.display(),
-                    "Failed to add/update file in index"
-                );
-            }
-        }
-    } else if let Err(e) = manager.remove_file(&path.to_string_lossy()) {
-        tracing::error!(
-            error = ?e,
-            path = %path.display(),
-            "Failed to remove file from index"
-        );
-    }
+				let indexed_file = IndexedFile {
+					path: path.to_string_lossy().to_string(),
+					name: path
+						.file_name()
+						.map(|s| s.to_string_lossy().to_string())
+						.unwrap_or_default(),
+					parent_path: path
+						.parent()
+						.map(|p| p.to_string_lossy().to_string())
+						.unwrap_or_default(),
+					file_type,
+					last_modified,
+				};
+				if let Err(e) = manager.add_file(&indexed_file) {
+					tracing::error!(
+						error = ?e,
+						path = %path.display(),
+						"Failed to add/update file in index"
+					);
+				}
+			}
+		} else if let Err(e) = manager.remove_file(&path.to_string_lossy()) {
+			tracing::error!(
+				error = ?e,
+				path = %path.display(),
+				"Failed to remove file from index"
+			);
+		}
+	}
 }
 
 pub async fn start_watching(app_handle: AppHandle) -> Result<(), AppError> {

@@ -48,13 +48,17 @@
 			error = 'Name cannot be empty';
 			return;
 		}
+		if (!link.trim()) {
+			error = 'Link cannot be empty';
+			return;
+		}
 		error = '';
 
 		const data = {
-			name,
-			link,
+			name: name.trim(),
+			link: link.trim(),
 			application: application === 'Default' ? undefined : application,
-			icon: icon === 'link-16' ? undefined : icon
+			icon: icon.trim() === 'link-16' || icon.trim() === '' ? undefined : icon.trim()
 		};
 
 		try {

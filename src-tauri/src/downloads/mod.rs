@@ -72,13 +72,15 @@ pub fn init(app_handle: AppHandle) {
 #[tauri::command]
 pub fn downloads_get_items(
     filter: String,
+    sort_by: Option<String>,
     search_term: Option<String>,
     limit: u32,
     offset: u32,
 ) -> Result<Vec<DownloadItem>, String> {
     if let Some(manager) = lock_manager()?.as_ref() {
+        let sort_by = sort_by.as_deref().unwrap_or("date");
         manager
-            .get_items(&filter, search_term.as_deref(), limit, offset)
+            .get_items(&filter, sort_by, search_term.as_deref(), limit, offset)
             .map_err(|e| e.to_string())
     } else {
         Err("Downloads manager not initialized".to_string())
@@ -118,14 +120,25 @@ pub fn downloads_open_file(path: String) -> Result<(), String> {
     }
 
     // Mark as accessed
-    if let Ok(guard) = lock_manager() {
-        if let Some(manager) = guard.as_ref() {
-            // Find the item by path and mark it accessed
-            if let Ok(items) = manager.get_items("all", None, 1000, 0) {
-                if let Some(item) = items.iter().find(|i| i.path == path.to_string_lossy()) {
-                    let _ = manager.mark_accessed(item.id);
+    let path_display = path.to_string_lossy();
+    match lock_manager() {
+        Ok(guard) => {
+            if let Some(manager) = guard.as_ref() {
+                if let Err(e) = manager.mark_accessed_by_path(&path_display) {
+                    tracing::warn!(
+                        error = ?e,
+                        path = %path_display,
+                        "Failed to mark download as accessed"
+                    );
                 }
             }
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                path = %path_display,
+                "Failed to lock downloads manager while marking access"
+            );
         }
     }
 
@@ -230,7 +243,7 @@ pub fn downloads_get_latest() -> Result<Option<DownloadItem>, String> {
     if let Some(manager) = lock_manager()?.as_ref() {
         // Get the first item sorted by created_at descending
         manager
-            .get_items("all", None, 1, 0)
+            .get_items("all", "date", None, 1, 0)
             .map(|items| items.into_iter().next())
             .map_err(|e| e.to_string())
     } else {
@@ -242,7 +255,7 @@ pub fn downloads_get_latest() -> Result<Option<DownloadItem>, String> {
 #[tauri::command]
 pub fn downloads_copy_latest() -> Result<String, String> {
     if let Some(manager) = lock_manager()?.as_ref() {
-        match manager.get_items("all", None, 1, 0) {
+        match manager.get_items("all", "date", None, 1, 0) {
             Ok(items) => {
                 if let Some(item) = items.first() {
                     Ok(item.path.clone())

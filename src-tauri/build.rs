@@ -1,4 +1,9 @@
-use std::{collections::HashSet, env, process::Command};
+use std::{
+    collections::HashSet,
+    env,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// Builds the runtime library search path for `libSoulverWrapper.so`.
 ///
@@ -44,8 +49,83 @@ fn set_rpath(binary: &str, rpath: &str) {
     );
 }
 
+/// Runs a git command in the repository root and returns trimmed stdout.
+fn git_output(repo_root: &Path, args: &[&str]) -> Option<String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .args(args)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let value = String::from_utf8(output.stdout).ok()?;
+    Some(value.trim().to_string())
+}
+
+/// Resolves the git metadata directory, including worktree setups.
+fn resolve_git_dir(repo_root: &Path) -> Option<PathBuf> {
+    let raw = git_output(repo_root, &["rev-parse", "--git-dir"])?;
+    let path = PathBuf::from(raw);
+    if path.is_absolute() {
+        Some(path)
+    } else {
+        Some(repo_root.join(path))
+    }
+}
+
+/// Emits build script rerun triggers for git revision and dirty-state changes.
+fn emit_git_rerun_hints(repo_root: &Path) {
+    let Some(git_dir) = resolve_git_dir(repo_root) else {
+        return;
+    };
+
+    let head = git_dir.join("HEAD");
+    let index = git_dir.join("index");
+    println!("cargo:rerun-if-changed={}", head.display());
+    println!("cargo:rerun-if-changed={}", index.display());
+
+    if let Ok(head_contents) = std::fs::read_to_string(&head) {
+        if let Some(reference) = head_contents.strip_prefix("ref: ") {
+            let ref_path = git_dir.join(reference.trim());
+            println!("cargo:rerun-if-changed={}", ref_path.display());
+        }
+    }
+}
+
+/// Exposes a CLI version with git build metadata.
+///
+/// Example: `0.1.4+g74a9e26` or `0.1.4+g74a9e26.dirty`.
+fn emit_cli_version(repo_root: &Path) {
+    let package_version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.0.0".to_string());
+    let short_sha = git_output(repo_root, &["rev-parse", "--short=8", "HEAD"])
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "nogit".to_string());
+    let dirty = git_output(repo_root, &["status", "--porcelain", "--untracked-files=no"])
+        .map(|out| !out.is_empty())
+        .unwrap_or(false);
+    let build_id = if dirty {
+        format!("g{short_sha}.dirty")
+    } else {
+        format!("g{short_sha}")
+    };
+
+    println!("cargo:rustc-env=FLARE_CLI_VERSION={package_version}+{build_id}");
+}
+
 /// Build script entry point for native Soulver linking and rpath configuration.
 fn main() {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into()));
+    let repo_root = manifest_dir
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| manifest_dir.clone());
+
+    emit_git_rerun_hints(&repo_root);
+    emit_cli_version(&repo_root);
+
     // Ensure the Swift wrapper can find SoulverCore when installed via deb:
     // libSoulverWrapper.so lives in .../SoulverWrapper/.build/release
     // and SoulverCore is in .../SoulverWrapper/Vendor/SoulverCore-linux.

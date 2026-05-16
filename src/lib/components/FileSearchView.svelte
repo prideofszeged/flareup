@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
-	import { tick, untrack } from 'svelte';
+import { tick } from 'svelte';
 	import { Loader2, Folder, File } from '@lucide/svelte';
 	import ListItemBase from './nodes/shared/ListItemBase.svelte';
 	import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -34,6 +34,7 @@
 	let searchText = $state('');
 	let isFetching = $state(false);
 	let searchInputEl: HTMLInputElement | null = $state(null);
+	let lastRequestId = 0;
 
 	const selectedItem = $derived(searchResults[selectedIndex]);
 
@@ -45,21 +46,29 @@
 		}
 	});
 
-	const fetchFiles = async () => {
-		if (isFetching) return;
+	const fetchFiles = async (term: string) => {
+		const requestId = ++lastRequestId;
 		isFetching = true;
 		try {
 			const newItems = await invoke<IndexedFile[]>('search_files', {
-				term: searchText
+				term
 			});
+			if (requestId !== lastRequestId) {
+				return;
+			}
 			searchResults = newItems;
 			if (selectedIndex >= newItems.length) {
 				selectedIndex = 0;
 			}
 		} catch (e) {
+			if (requestId !== lastRequestId) {
+				return;
+			}
 			console.error('Failed to fetch files:', e);
 		} finally {
-			isFetching = false;
+			if (requestId === lastRequestId) {
+				isFetching = false;
+			}
 		}
 	};
 
@@ -84,25 +93,25 @@
 
 	const handleDelete = async (item: IndexedFile) => {
 		await invoke('trash', { paths: [item.path] });
-		fetchFiles();
+		await fetchFiles(searchText);
 	};
 
 	$effect(() => {
 		const term = searchText;
 		if (!term) {
+			lastRequestId++;
 			searchResults = [];
 			isFetching = false;
 			return;
 		}
 
-		untrack(() => {
-			const timer = setTimeout(() => {
-				if (term === searchText) {
-					fetchFiles();
-				}
-			}, 200);
-			return () => clearTimeout(timer);
-		});
+		const timer = setTimeout(() => {
+			if (term === searchText) {
+				void fetchFiles(term);
+			}
+		}, 200);
+
+		return () => clearTimeout(timer);
 	});
 
 	const actions: ActionDefinition[] = $derived(

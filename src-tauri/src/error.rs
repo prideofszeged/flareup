@@ -11,6 +11,7 @@ pub enum AppError {
     Frecency(String),
     FileSearch(String),
     Ai(String),
+    Validation(String),
 }
 
 impl From<io::Error> for AppError {
@@ -55,6 +56,7 @@ impl std::fmt::Display for AppError {
             AppError::Frecency(msg) => write!(f, "Frecency error: {}", msg),
             AppError::FileSearch(msg) => write!(f, "File search error: {}", msg),
             AppError::Ai(msg) => write!(f, "AI error: {}", msg),
+            AppError::Validation(msg) => write!(f, "Validation error: {}", msg),
         }
     }
 }

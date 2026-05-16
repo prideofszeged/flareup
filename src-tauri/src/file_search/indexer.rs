@@ -1,5 +1,5 @@
 use super::{manager::FileSearchManager, types::IndexedFile};
-use std::{env, path::PathBuf, time::SystemTime};
+use std::{collections::HashSet, env, path::PathBuf, time::SystemTime};
 use tauri::{AppHandle, Manager};
 use walkdir::{DirEntry, WalkDir};
 
@@ -38,6 +38,7 @@ pub async fn build_initial_index(app_handle: AppHandle) {
     };
 
     let mut total_indexed = 0;
+    let mut total_removed = 0;
     for dir_name in &index_dirs {
         let dir_path = PathBuf::from(&home_dir).join(dir_name);
         if !dir_path.exists() || !dir_path.is_dir() {
@@ -45,9 +46,12 @@ pub async fn build_initial_index(app_handle: AppHandle) {
         }
 
         tracing::info!(path = %dir_path.display(), "Indexing directory");
+        let dir_path_str = dir_path.to_string_lossy().to_string();
+        let dir_prefix = format!("{}{}", dir_path_str, std::path::MAIN_SEPARATOR);
 
         // Collect files to add in batches for better performance
         let mut files_to_add = Vec::new();
+        let mut seen_paths: HashSet<String> = HashSet::new();
 
         let walker = WalkDir::new(&dir_path).into_iter();
         for entry in walker.filter_entry(|e| !is_hidden(e) && !is_excluded(e)) {
@@ -60,6 +64,8 @@ pub async fn build_initial_index(app_handle: AppHandle) {
             };
 
             let path = entry.path();
+            let path_str = path.to_string_lossy().to_string();
+            seen_paths.insert(path_str.clone());
             let metadata = match entry.metadata() {
                 Ok(meta) => meta,
                 Err(_) => continue,
@@ -93,7 +99,7 @@ pub async fn build_initial_index(app_handle: AppHandle) {
             };
 
             let indexed_file = IndexedFile {
-                path: path.to_string_lossy().to_string(),
+                path: path_str.clone(),
                 name: entry.file_name().to_string_lossy().to_string(),
                 parent_path: path
                     .parent()
@@ -124,9 +130,35 @@ pub async fn build_initial_index(app_handle: AppHandle) {
                 total_indexed += files_to_add.len();
             }
         }
+
+        // Remove stale indexed entries that are no longer on disk in this watched directory.
+        let stale_paths: Vec<String> = existing_files
+            .keys()
+            .filter(|indexed_path| {
+                (indexed_path.as_str() == dir_path_str || indexed_path.starts_with(&dir_prefix))
+                    && !seen_paths.contains(indexed_path.as_str())
+            })
+            .cloned()
+            .collect();
+
+        for stale_path in stale_paths {
+            if let Err(e) = manager.remove_file(&stale_path) {
+                tracing::error!(
+                    error = ?e,
+                    path = %stale_path,
+                    "Failed to remove stale indexed file"
+                );
+            } else {
+                total_removed += 1;
+            }
+        }
     }
 
-    tracing::info!(count = total_indexed, "Finished initial file index build");
+    tracing::info!(
+        indexed = total_indexed,
+        removed = total_removed,
+        "Finished initial file index build"
+    );
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
