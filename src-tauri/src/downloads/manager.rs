@@ -51,7 +51,14 @@ impl DownloadsManager {
         )?;
 
         // Backward-compatible migration for existing databases.
-        let _ = db.execute("ALTER TABLE downloads ADD COLUMN modified_at TEXT", []);
+        let mut stmt = db.prepare("PRAGMA table_info(downloads)")?;
+        let columns: Vec<String> = stmt
+            .query_map([], |row| row.get(1))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if !columns.contains(&"modified_at".to_string()) {
+            db.execute("ALTER TABLE downloads ADD COLUMN modified_at TEXT", [])?;
+        }
 
         db.execute(
             "CREATE INDEX IF NOT EXISTS idx_downloads_created ON downloads(created_at DESC)",
@@ -111,8 +118,15 @@ impl DownloadsManager {
 
         let db = self.db.lock().expect("downloads db mutex poisoned");
         db.execute(
-            "INSERT OR REPLACE INTO downloads (path, name, extension, file_type, size_bytes, created_at, modified_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO downloads (path, name, extension, file_type, size_bytes, created_at, modified_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(path) DO UPDATE SET
+                name = excluded.name,
+                extension = excluded.extension,
+                file_type = excluded.file_type,
+                size_bytes = excluded.size_bytes,
+                created_at = excluded.created_at,
+                modified_at = excluded.modified_at",
             params![
                 path_str,
                 name,
@@ -124,7 +138,11 @@ impl DownloadsManager {
             ],
         )?;
 
-        let id = db.last_insert_rowid();
+        let id = db.query_row(
+            "SELECT id FROM downloads WHERE path = ?1",
+            params![path_str],
+            |row| row.get(0),
+        )?;
 
         Ok(Some(DownloadItem {
             id,

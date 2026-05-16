@@ -125,6 +125,14 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
+		if (showKillPortModal) {
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				showKillPortModal = false;
+			}
+			return;
+		}
+
 		const items = activeTab === 'processes' ? sortedProcesses : ports;
 		const maxIndex = items.length - 1;
 
@@ -370,29 +378,25 @@
 </div>
 
 {#if showKillPortModal}
-	<div
-		class="modal-overlay"
-		role="button"
-		tabindex="0"
-		onclick={(e) => {
-			if (e.currentTarget === e.target) {
-				showKillPortModal = false;
-			}
-		}}
-		onkeydown={(e) => {
-			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-				e.preventDefault();
-				showKillPortModal = false;
-			}
-		}}
-	>
-		<div class="modal" role="dialog" aria-modal="true" tabindex="-1">
-			<h2>Kill Process on Port</h2>
+	<div class="modal-overlay">
+		<button
+			type="button"
+			class="modal-backdrop"
+			aria-label="Close kill port modal"
+			onclick={() => (showKillPortModal = false)}
+		></button>
+		<div class="modal" role="dialog" aria-modal="true" aria-labelledby="kill-port-modal-title">
+			<h2 id="kill-port-modal-title">Kill Process on Port</h2>
 			<input
 				type="number"
 				placeholder="Enter port number (e.g., 3000)"
 				bind:value={killPortInput}
-				onkeydown={(e) => e.key === 'Enter' && handleQuickKillPort()}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+						handleQuickKillPort();
+					}
+				}}
 			/>
 			<div class="modal-actions">
 				<button class="cancel-btn" onclick={() => (showKillPortModal = false)}> Cancel </button>
@@ -641,14 +645,23 @@
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.6);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 1000;
 	}
 
+	.modal-backdrop {
+		position: absolute;
+		inset: 0;
+		border: 0;
+		background: rgba(0, 0, 0, 0.6);
+		cursor: default;
+	}
+
 	.modal {
+		position: relative;
+		z-index: 1;
 		background: var(--bg-primary, #1a1a2e);
 		border: 1px solid var(--border-color, #333);
 		border-radius: 12px;

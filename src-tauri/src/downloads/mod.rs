@@ -120,9 +120,25 @@ pub fn downloads_open_file(path: String) -> Result<(), String> {
     }
 
     // Mark as accessed
-    if let Ok(guard) = lock_manager() {
-        if let Some(manager) = guard.as_ref() {
-            let _ = manager.mark_accessed_by_path(&path.to_string_lossy());
+    let path_display = path.to_string_lossy();
+    match lock_manager() {
+        Ok(guard) => {
+            if let Some(manager) = guard.as_ref() {
+                if let Err(e) = manager.mark_accessed_by_path(&path_display) {
+                    tracing::warn!(
+                        error = ?e,
+                        path = %path_display,
+                        "Failed to mark download as accessed"
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                path = %path_display,
+                "Failed to lock downloads manager while marking access"
+            );
         }
     }
 

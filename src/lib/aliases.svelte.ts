@@ -11,7 +11,7 @@ class AliasesStore {
 	async loadAliases() {
 		try {
 			const result = await invoke<Record<string, string>>('get_aliases');
-			this.aliases = result && typeof result === 'object' ? result : {};
+			this.aliases = result && typeof result === 'object' && !Array.isArray(result) ? result : {};
 			this.isLoaded = true;
 		} catch (error) {
 			console.error('[AliasesStore] Failed to load aliases:', error);
