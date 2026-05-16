@@ -209,7 +209,7 @@ build-deb: check-deps sidecar swift
     echo "DEB package: {{deb_dir}}/flare_{{version}}_amd64.deb"
     echo ""
     echo "To install:"
-    echo "  sudo apt install -y {{deb_dir}}/flare_{{version}}_amd64.deb"
+    echo "  sudo apt install --reinstall -y {{deb_dir}}/flare_{{version}}_amd64.deb"
 
 # Build RPM package only
 [group('build')]
@@ -317,7 +317,7 @@ install-deb: build-deb
         exit 1
     fi
     echo "📦 Installing $DEB..."
-    sudo apt install -y "$DEB"
+    sudo apt install --reinstall -y "$DEB"
     echo "✅ Installed via apt"
 
 # Run the installed AppImage
