@@ -1,0 +1,10 @@
+[mcp_servers.ChunkHound]
+args = ["mcp"]
+command = "chunkhound"
+
+[mcp_servers.flareup]
+args = [
+    "tsx",
+    "packages/mcp-server/src/index.ts",
+]
+command = "npx"
