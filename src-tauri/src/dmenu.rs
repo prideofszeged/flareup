@@ -4,6 +4,7 @@ use std::io::{self, BufRead};
 /// Flare Launcher - A Raycast-compatible launcher for Linux
 #[derive(Parser)]
 #[command(name = "flare")]
+#[command(version)]
 #[command(about = "A focused launcher for your desktop", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
