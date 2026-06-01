@@ -160,6 +160,7 @@ fn is_macho_binary(data: &[u8]) -> bool {
     MACH_O_MAGIC_BYTES.contains(&header)
 }
 
+/// Returns the directory path for an extension given its slug
 fn get_extension_dir(app: &tauri::AppHandle, slug: &str) -> Result<PathBuf, String> {
     let data_dir = app
         .path()
@@ -168,6 +169,7 @@ fn get_extension_dir(app: &tauri::AppHandle, slug: &str) -> Result<PathBuf, Stri
     Ok(data_dir.join("plugins").join(slug))
 }
 
+/// Downloads an extension archive from the given URL and returns the raw bytes
 async fn download_archive(url: &str) -> Result<bytes::Bytes, String> {
     let response = reqwest::get(url)
         .await
@@ -186,6 +188,7 @@ async fn download_archive(url: &str) -> Result<bytes::Bytes, String> {
         .map_err(|e| format!("Failed to read response bytes: {}", e))
 }
 
+/// Finds the common directory prefix shared by all file paths in an archive
 fn find_common_prefix(file_names: &[PathBuf]) -> Option<PathBuf> {
     if file_names.len() <= 1 {
         return None;
@@ -212,6 +215,7 @@ struct CommandToCheck {
     command_title: String,
 }
 
+/// Extracts the list of commands from package.json inside a zip archive
 fn get_commands_from_package_json(
     archive: &mut ZipArchive<Cursor<bytes::Bytes>>,
     prefix: &Option<PathBuf>,
@@ -273,6 +277,7 @@ struct HeuristicResult {
     macho_binaries: Vec<String>,
 }
 
+/// Runs all compatibility heuristics on an extension archive to detect macOS-specific code
 fn run_heuristic_checks(archive_data: &bytes::Bytes) -> Result<HeuristicResult, String> {
     let heuristics: Vec<Box<dyn IncompatibilityHeuristic + Send + Sync>> = vec![
         Box::new(AppleScriptHeuristic),
@@ -425,6 +430,7 @@ fn calculate_compatibility_score(violations: &[HeuristicViolation]) -> u8 {
     score.max(0).min(100) as u8
 }
 
+/// Saves compatibility warnings and score to a JSON file in the plugin directory
 fn save_compatibility_metadata(
     plugin_dir: &Path,
     warnings: &[HeuristicViolation],
@@ -438,6 +444,7 @@ fn save_compatibility_metadata(
     fs::write(plugin_dir.join(COMPATIBILITY_FILE_NAME), data).map_err(|e| e.to_string())
 }
 
+/// Loads compatibility metadata from a plugin directory or returns default if not found
 fn load_compatibility_metadata(plugin_dir: &Path) -> Result<CompatibilityMetadata, String> {
     let path = plugin_dir.join(COMPATIBILITY_FILE_NAME);
     if !path.exists() {
@@ -449,6 +456,7 @@ fn load_compatibility_metadata(plugin_dir: &Path) -> Result<CompatibilityMetadat
     Ok(parsed)
 }
 
+/// Extracts a zip archive to the target directory, stripping any common prefix
 fn extract_archive(archive_data: &bytes::Bytes, target_dir: &Path) -> Result<(), String> {
     if target_dir.exists() {
         fs::remove_dir_all(target_dir).map_err(|e| e.to_string())?;
@@ -581,6 +589,7 @@ pub struct PluginInfo {
     pub compatibility_score: Option<u8>,
 }
 
+/// Discovers all installed extensions by scanning the plugins directory
 pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, String> {
     let plugins_base_dir = get_extension_dir(app, "")?;
     let mut plugins = Vec::new();
@@ -708,6 +717,7 @@ pub fn discover_plugins(app: &tauri::AppHandle) -> Result<Vec<PluginInfo>, Strin
     Ok(plugins)
 }
 
+/// Downloads and installs an extension from a URL, optionally forcing installation despite compatibility warnings
 #[tauri::command]
 pub async fn install_extension(
     app: tauri::AppHandle,
@@ -762,6 +772,7 @@ pub struct CompatibilityInfo {
     pub warnings: Vec<HeuristicViolation>,
 }
 
+/// Retrieves compatibility information for a specific installed extension
 #[tauri::command]
 pub fn get_extension_compatibility(
     app: tauri::AppHandle,
@@ -783,6 +794,7 @@ pub fn get_extension_compatibility(
     })
 }
 
+/// Retrieves compatibility information for all installed extensions
 #[tauri::command]
 pub fn get_all_extensions_compatibility(
     app: tauri::AppHandle,
@@ -819,6 +831,7 @@ pub fn get_all_extensions_compatibility(
     Ok(results)
 }
 
+/// Uninstalls an extension by removing its directory from the plugins folder
 #[tauri::command]
 pub fn uninstall_extension(app: tauri::AppHandle, slug: String) -> Result<(), String> {
     // Reject slugs with path traversal components

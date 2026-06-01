@@ -110,6 +110,7 @@
 		}
 	});
 
+	/** Submits the current prompt to the AI and streams the response */
 	async function handleSubmit() {
 		if (!prompt.trim() || isGenerating) return;
 
@@ -150,6 +151,7 @@
 		}
 	}
 
+	/** Loads the list of saved conversations from the backend */
 	async function loadConversations() {
 		try {
 			conversations = await invoke<Conversation[]>('list_conversations');
@@ -158,6 +160,7 @@
 		}
 	}
 
+	/** Loads a specific conversation by ID and sets it as active */
 	async function loadConversation(id: string) {
 		try {
 			const conversation = await invoke<Conversation | null>('get_conversation', { id });
@@ -170,6 +173,7 @@
 		}
 	}
 
+	/** Clears the current chat and starts a new conversation */
 	function newChat() {
 		activeRequestId = null;
 		isGenerating = false;
@@ -179,6 +183,7 @@
 		searchInputEl?.focus();
 	}
 
+	/** Loads available AI models from Ollama or uses fallback defaults */
 	async function loadModels() {
 		try {
 			// Try to get Ollama models
@@ -199,6 +204,7 @@
 		}
 	}
 
+	/** Loads the list of AI presets from the backend */
 	async function loadPresets() {
 		try {
 			presets = await invoke<AiPreset[]>('list_ai_presets');
@@ -335,6 +341,7 @@
 		};
 	});
 
+	/** Handles keyboard input in the prompt field, submits on Enter */
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
@@ -342,6 +349,7 @@
 		}
 	}
 
+	/** Saves the current conversation to the backend, creating a new one if needed */
 	async function saveConversation() {
 		try {
 			if (!currentConversationId) {
@@ -364,10 +372,12 @@
 		}
 	}
 
+	/** Clears the current chat and resets to a new conversation */
 	function clearChat() {
 		newChat();
 	}
 
+	/** Deletes a conversation by ID and refreshes the conversation list */
 	async function deleteConversation(id: string) {
 		try {
 			await invoke('delete_conversation', { id });
@@ -380,10 +390,12 @@
 		}
 	}
 
+	/** Toggles the visibility of the conversations sidebar */
 	function toggleSidebar() {
 		showSidebar = !showSidebar;
 	}
 
+	/** Formats a timestamp into a human-readable relative date string */
 	function formatDate(timestamp: number): string {
 		const date = new Date(timestamp);
 		const now = new Date();
